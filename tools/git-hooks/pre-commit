@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#
+# Refuse a commit that does not build and pass TenForge's tests.
+#
+# The regime is "run the suite, then commit", and a regime that depends on
+# remembering lapses exactly when it matters. This makes it automatic.
+#
+# Install (per clone, since git does not ship hooks):
+#     git config core.hooksPath tools/git-hooks
+#
+# Skipping is deliberate and visible: `git commit --no-verify`.
+
+set -uo pipefail
+
+repo=$(git rev-parse --show-toplevel)
+cd "$repo" || exit 1
+
+# Em-dashes first: milliseconds, every file type, and invisible in review.
+if ! "$repo/tools/check-no-em-dashes.sh" $(git diff --cached --name-only --diff-filter=ACMR); then
+    echo "pre-commit: em-dashes are not allowed in this code base. Commit refused." >&2
+    exit 1
+fi
+
+# A docs-only commit cannot break the build, so it pays nothing more.
+if ! git diff --cached --name-only --diff-filter=ACMR \
+     | grep -qE '\.(cpp|h|hpp|cc|cxx|json)$|CMakeLists\.txt$|\.cmake$'; then
+    exit 0
+fi
+
+if ! command -v cmake >/dev/null 2>&1; then
+    echo "pre-commit: cmake not found, cannot verify. Fix PATH, or commit with --no-verify." >&2
+    exit 1
+fi
+
+build="$repo/build-ninja"
+log=$(mktemp)
+trap 'rm -f "$log"' EXIT
+
+echo "pre-commit: building..."
+if ! cmake -S "$repo" -B "$build" -G Ninja >"$log" 2>&1; then
+    echo "pre-commit: CMake configure FAILED. Commit refused." >&2
+    tail -30 "$log" >&2
+    exit 1
+fi
+if ! cmake --build "$build" >"$log" 2>&1; then
+    echo "pre-commit: BUILD FAILED. Commit refused." >&2
+    tail -30 "$log" >&2
+    exit 1
+fi
+
+echo "pre-commit: running TenForge's test suite..."
+if ! ( cd "$build" && ctest --output-on-failure ); then
+    echo "pre-commit: TESTS FAILED. Commit refused." >&2
+    exit 1
+fi
+
+echo "pre-commit: build and tests green."
+exit 0

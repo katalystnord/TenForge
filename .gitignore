@@ -1,0 +1,45 @@
+# Build output
+dist/
+build/
+build-*/
+cmake-build-*/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Qt
+*.autosave
+moc_*.cpp
+moc_*.h
+ui_*.h
+qrc_*.cpp
+.qmake.stash
+
+# IDE
+.vscode/
+.idea/
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python bytecode
+tools/__pycache__/
+
+# Instrumented build trees (sanitizers now; coverage and mutation runs later)
+build-coverage/
+build-mutants/
+build-sanitize/
+
+
+# Datasets fetched at test time rather than committed (licence does not
+# cover redistribution; see CLAUDE.md, Fixtures).
+tests/fetched/
