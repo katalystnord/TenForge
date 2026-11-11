@@ -36,7 +36,13 @@ jobs:
 
       - name: Install dependencies
         uses: ./.github/actions/apt-deps
-        timeout-minutes: 25
+        # 60, not 25. With a warm cache this step takes about a minute
+        # (SurView's runs, Oct 2026). A COLD run downloads the whole VTK stack
+        # (Java bindings included) and took 25 to 33 minutes in SurView; the
+        # first TenForge run hit a 25-minute limit, and because the timeout
+        # covers the whole composite action it also killed the cache save, so
+        # the cache could never warm. The limit must outlast one cold run.
+        timeout-minutes: 60
         with:
           cache-key: apt-tenforge-26.04
           need-vtk-qt: 'true'
