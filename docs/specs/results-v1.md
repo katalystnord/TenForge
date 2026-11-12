@@ -1,6 +1,7 @@
 # TenForge results, version 1
 
-**Status: DRAFT, awaiting David's approval (Phase 0).**
+**Status: APPROVED by David, 2026-11-12.** A contract from here: changes
+are additive within version 1; anything else is version 2.
 
 What TenForge computed from a record with a profile, how, and how far it
 can be trusted. Written into the record's `results/` folder; one
@@ -110,11 +111,9 @@ Statistics over several tests (mean, sd, ISO 2602 interval, Weibull) go
 in a separate series file referencing each test's `results.json` by
 SHA-256. Specified with Phase 2, when the GUI first handles series.
 
-## 5. Open questions for approval
+## 5. Decisions (David, 2026-11-12)
 
-1. Should an analysis ever be `to-standard` before Phase 7 (calibration)
-   exists? Proposed: no; until certificates can be recorded, everything is
-   `aligned`, honestly.
-2. Rounding: store reported values as text (as above), or as numbers plus
-   a precision? Proposed: text, so what was reported is exactly what is
-   stored.
+1. **Nothing is `to-standard` before Phase 7.** Until calibration
+   certificates can be recorded, every analysis is `aligned`.
+2. **Reported values are stored as text**, so what was reported is
+   exactly what is stored; the unrounded SI value sits beside it.

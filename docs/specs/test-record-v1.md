@@ -1,7 +1,6 @@
 # TenForge test record, version 1
 
-**Status: DRAFT, awaiting David's approval (Phase 0).** Nothing reads or
-writes this format until it is approved. After approval it is a contract:
+**Status: APPROVED by David, 2026-11-12.** It is a contract:
 changes are additive within version 1; anything else is version 2
 (engineering principle 9).
 
@@ -38,14 +37,23 @@ my-test/
     force.csv               one file per channel, each at its own rate
     position.csv
     extensometer-1.csv
-  source/                   imported files kept verbatim (optional)
+  source/                   imported inputs kept verbatim (optional)
     machine-export.csv
   frames/                   camera frames, zero-padded (optional)
     frame_000001.tif
   frames.csv                frame index (present when frames/ is)
-  fields/                   DIC fields imported from another tool (optional)
-    surview/fields.pvd
-    surview/frame_000001.vtu
+  analyses/                 other tools' analyses of this test (optional)
+    surview-2026-11-12/
+      analysis.json
+      series.csv
+      frame_000001.vtu
+    fe-model-calculix/
+      analysis.json
+      model.inp
+      results.frd
+  fields/                   ParaView view of imported DIC fields (optional)
+    surview-2026-11-12/fields.pvd
+    surview-2026-11-12/frame_000001.vtu
   results/
     results.json            see results-v1.md
     results.csv
@@ -80,7 +88,7 @@ can recognise a record by one file.
 - A reader refuses a major version it does not know and says so; it reads
   any minor version of a known major, ignoring fields it does not know.
 - Roles: `metadata`, `channel`, `source`, `frame-index`, `frame`, `field`,
-  `field-collection`, `results`.
+  `field-collection`, `results`, `analysis`.
 
 ## 4. Channels: `channels/<id>.csv`
 
@@ -172,15 +180,66 @@ and SurView already use for series.
 | `t_device_s`, `t_host_s` | As for channels. |
 | `force_at_capture_N` | **Derived**: force at the frame's timestamp, by linear interpolation between the two nearest force samples. Present for convenience (e.g. for plotting against force in another tool); the method is stated in `test.json` and the raw force channel remains the record. |
 
-## 7. Imported DIC fields: `fields/<source>/`
+## 7. Other tools' analyses: `analyses/<id>/`
 
-A tool's output (e.g. SurView's per-frame `.vtu` and its series CSV, or
-OpenCorr's per-image tables) is copied verbatim into `source/` and, where
-it is a field, also placed under `fields/<source>/` with a `.pvd`
-collection. Each `.vtu` written by TenForge carries in its FieldData:
-`TimeValue` (seconds from record start; ParaView's XML readers use it as
-time) and `force_at_capture_N`. The join to frames is by frame file name
-or SHA-256 where the importing tool carries them, never by row position.
+Everything another tool made from or for this test lives beside the data:
+R or Python scripts and their output, SurView or OpenCorr DIC, FE models
+and their results, a microscopy or fractography note on the specimen, a
+fit from MatCal. One folder per analysis, its files kept verbatim, plus
+one small `analysis.json` that any tool can write:
+
+```json
+{
+  "format": "tenforge-analysis",
+  "version": "1.0",
+  "tool": { "name": "SurView", "version": "0.9.2" },
+  "created": "2026-11-12T10:15:00Z",
+  "author": "",
+  "kind": "dic",
+  "inputs": [
+    { "path": "frames/frame_000001.tif", "sha256": "..." },
+    { "path": "channels/force.csv", "sha256": "..." }
+  ],
+  "files": [ "series.csv", "frame_000001.vtu" ],
+  "results": [
+    { "name": "Poisson's ratio", "value": 0.29, "unit": "1" }
+  ],
+  "notes": ""
+}
+```
+
+- `kind` is free text with suggested values: `dic`, `script`, `fe-model`,
+  `fit`, `imaging`, `other`.
+- `inputs` names the record files the analysis used, by path and SHA-256,
+  so any reader can see whether the analysis still matches the data.
+- `results` is optional: named values a reader can show without
+  understanding the tool.
+
+Rules:
+
+1. **TenForge interprets an analysis only where it has an importer** (for
+   SurView series CSV and OpenCorr tables, Phase 6). Otherwise it keeps
+   the files, lists them, and shows any `results` beside its own,
+   labelled with the tool that made them.
+2. **Other tools may write here without TenForge.** The manifest belongs
+   to TenForge: when it opens a record and finds files the manifest does
+   not list, it says so and offers to add them with their hashes. It
+   never adopts them silently and never changes them.
+3. **Adding an analysis never changes the record's data or TenForge's
+   results** (tenet 10).
+4. **`source/` holds inputs only** (e.g. a machine's export); a tool's
+   output goes under `analyses/`.
+
+### 7.1 Imported DIC fields: `fields/<id>/`
+
+Where an analysis holds per-frame fields (e.g. SurView's `.vtu`, or
+OpenCorr's per-image tables converted), TenForge places a ParaView view
+of them under `fields/<id>/` with a `.pvd` collection, `<id>` matching
+the folder under `analyses/`. Each `.vtu` written by TenForge carries in
+its FieldData: `TimeValue` (seconds from record start; ParaView's XML
+readers use it as time) and `force_at_capture_N`. The join to frames is
+by frame file name or SHA-256 where the tool carries them, never by row
+position.
 
 ## 8. What is not in a record
 
@@ -188,12 +247,13 @@ Exports (FreeCAD material cards, CalculiX hardening data, plain CSV,
 JSON-LD) are produced on demand from a record into a place the user
 chooses. They are views of the record, not part of it.
 
-## 9. Open questions for approval
+## 9. Decisions (David, 2026-11-12)
 
-1. Frame format: keep whatever the camera delivers (TIFF, PNG), or
-   normalise? Proposed: keep as delivered (tenet 10).
-2. Large records: is a plain folder enough at kHz over long tests, or do
-   we need a binary channel format (e.g. HDF5) in version 1? Proposed:
-   CSV in 1.0; a binary alternative later as an additive option.
-3. `force_at_capture_N` in `frames.csv`: keep as a labelled derived
-   convenience, or leave all joining to the reader?
+1. **Frames are kept as the camera delivers them** (TIFF, PNG), never
+   normalised (tenet 10).
+2. **CSV in 1.0**, one file per channel; a binary channel format (e.g.
+   HDF5) may come later as an additive option.
+3. **`force_at_capture_N` stays** in `frames.csv`, labelled derived; the
+   raw force channel remains the record.
+4. **Other tools' analyses are co-located** in the record under
+   `analyses/` (section 7).
