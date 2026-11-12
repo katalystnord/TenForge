@@ -8,10 +8,9 @@ The full plan and roadmap: [ROADMAP.md](ROADMAP.md). The data contracts:
 
 # THE TEN TENETS
 
-**DRAFT, adapted from SurView's tenets (David, 2026-07-21). Awaiting
-David's settling in Phase 0.** Once settled, everything else in this file
-is subordinate to them; where the rest of the file disagrees with a tenet,
-the tenet wins.
+**Settled by David, 2026-11-12** (adapted from SurView's tenets,
+2026-07-21). Everything else in this file is subordinate to them; where
+the rest of the file disagrees with a tenet, the tenet wins.
 
 1. **Force, displacement and images in, trustworthy results out.** Two
    co-equal pillars: faithfully record the test, and analyse it by named
