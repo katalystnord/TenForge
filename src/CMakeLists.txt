@@ -30,6 +30,7 @@ add_library(tf_core STATIC
     core/Import.cpp
     core/Profile.cpp
     core/Record.cpp
+    core/Report.cpp
     core/Results.cpp
     core/Session.cpp
     core/Specimen.cpp

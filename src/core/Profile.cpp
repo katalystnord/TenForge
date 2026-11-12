@@ -113,6 +113,13 @@ ProfileOrError loadProfile(const QString &pathOrId)
     Profile p;
     p.id = root.value("id").toString();
     p.title = root.value("title").toString();
+    {
+        const QJsonObject st = root.value("standard").toObject();
+        const QString body = st.value("body").toString(), number = st.value("number").toString(),
+                      edition = st.value("edition").toString();
+        if (!number.isEmpty())
+            p.designation = (body + " " + number).trimmed() + (edition.isEmpty() ? "" : ":" + edition);
+    }
     p.profileVersion = root.value("profile_version").toString();
     p.mode = root.value("mode").toString();
     p.path = path;

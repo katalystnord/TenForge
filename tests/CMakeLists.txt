@@ -35,6 +35,13 @@
 #     and analysis_session_guides_and_analyses were written first and seen
 #     red against stubs (8 of 9, abort, 12 of 12). Then one real defect
 #     caught: a notice capitalised its leading path ("Results/...").
+#   - report_carries_results_conformity_and_provenance: written first, red
+#     against a stub (5 of 6; the no-dashes case passes on an empty page).
+#   - main_window_walkthrough, Phase 2: first run red on its own (no
+#     procedure named "ISO 6892-1" was offered: the list showed only
+#     titles, a real UX defect, fixed). Then broken on purpose, each red:
+#     chart left out of the HTML report; gauge length edits not read;
+#     conformity not stated; the unlisted-files button never shown.
 #   NOT exercised: the chart's render-size assertion was not separately
 #   broken (no clean way to deny the widget a GL context in the test); it
 #   rests on VTK reporting zero size without one.
@@ -110,6 +117,12 @@ target_link_libraries(test_session PRIVATE tf_core)
 target_compile_definitions(test_session PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME analysis_session_guides_and_analyses COMMAND test_session)
+
+add_executable(test_report test_report.cpp)
+target_link_libraries(test_report PRIVATE tf_core)
+target_compile_definitions(test_report PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME report_carries_results_conformity_and_provenance COMMAND test_report)
 
 # --- Validation: NPL TENSTAND (Phase 1 exit criterion) -----------------------
 # The 15 Premium Quality files carry no licence statement, so they are not
@@ -196,6 +209,8 @@ set_tests_properties(cli_without_an_area_exits_non_zero PROPERTIES WILL_FAIL TRU
 # --- Walkthrough: the real window -------------------------------------------
 add_executable(test_main_window_walkthrough test_main_window_walkthrough.cpp)
 target_link_libraries(test_main_window_walkthrough PRIVATE tf_gui Qt6::Test)
+target_compile_definitions(test_main_window_walkthrough PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 vtk_module_autoinit(TARGETS test_main_window_walkthrough MODULES ${VTK_LIBRARIES})
 
 # HEADLESS BY CONSTRUCTION, not by how the suite is invoked (SurView's
@@ -220,5 +235,6 @@ endif()
 # Software GL, so the result does not depend on this machine's graphics card
 # (and never touches it); WAYLAND_DISPLAY cleared so Qt uses the X server
 # above rather than reaching past it to a compositor.
-set_tests_properties(main_window_walkthrough PROPERTIES
+# A file dialog nobody answers would wait for ever: the timeout ends it.
+set_tests_properties(main_window_walkthrough PROPERTIES TIMEOUT 120
     ENVIRONMENT "LIBGL_ALWAYS_SOFTWARE=1;QT_QPA_PLATFORM=xcb;WAYLAND_DISPLAY=")

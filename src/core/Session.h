@@ -60,6 +60,8 @@ public:
     QString recordDir() const { return m_recordDir; }
     QStringList notes() const { return m_notes; }
     QStringList notices() const { return m_notices; }
+    // Files in the opened record's folder its manifest does not list.
+    QStringList unlisted() const { return m_unlisted; }
 
     Step next() const;
     bool analyse();  // false, and analysis() empty, unless next().ready
@@ -73,7 +75,7 @@ private:
 
     std::optional<Table> m_table;
     QString m_recordDir;
-    QStringList m_notes, m_notices;
+    QStringList m_notes, m_notices, m_unlisted;
     std::optional<Analysis> m_analysis;
 };
 

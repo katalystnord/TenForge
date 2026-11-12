@@ -53,6 +53,7 @@ QString Session::openData(const QString &path)
     m_recordDir.clear();
     m_notes.clear();
     m_notices.clear();
+    m_unlisted.clear();
     m_analysis.reset();
     mapping = {};
     specimen = {};  // a new file is a new specimen; the procedure is kept
@@ -104,6 +105,7 @@ QString Session::openRecord(const QString &dirOrManifest)
     m_analysis.reset();
     m_notes = {"opened from the record " + o.dir};
     m_notices.clear();
+    m_unlisted = o.unlisted;
     mapping = {o.forceColumn, o.extensionColumn, o.forceUnit, o.extensionUnit};
     specimen = o.specimen;
     // Paths begin these sentences and are kept exactly as written.
@@ -194,8 +196,8 @@ Step Session::next() const
         return {false, "profile", sentence(p.error)};
 
     return {true, {},
-            "Analysed. The results update as you change anything above; save a report with "
-            "File > Export report."};
+            "Analysed. The results update as you change anything on the left; save a report "
+            "with File > Export report."};
 }
 
 TensionMapping Session::tensionMapping() const

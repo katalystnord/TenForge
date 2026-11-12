@@ -36,6 +36,12 @@ struct ProfileResult {
 
 struct Profile {
     QString id, title, profileVersion, mode;
+    QString designation;   // the standard, e.g. "ISO 6892-1:2019"; empty when none named
+    // How a person names it: "ISO 6892-1:2019, Metallic materials, ...".
+    QString displayName() const
+    {
+        return designation.isEmpty() ? title : designation + ", " + title;
+    }
     QString path;          // where it was read from (":/profiles/..." when shipped)
     bool shipped = false;
     QByteArray sha256;     // of the file's bytes, hex

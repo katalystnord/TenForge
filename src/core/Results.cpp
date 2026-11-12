@@ -74,6 +74,8 @@ QJsonObject resultsJson(const Profile &profile, const tf::analysis::TensionResul
         {"columns", QJsonObject{{"force", source.forceColumn}, {"extension", source.extensionColumn}}},
         {"notes", QJsonArray::fromStringList(source.notes)}};
     root["profile"] = QJsonObject{{"id", profile.id},
+                                  {"title", profile.title},
+                                  {"standard", profile.designation},
                                   {"profile_version", profile.profileVersion},
                                   {"sha256", QString::fromLatin1(profile.sha256)},
                                   {"shipped", profile.shipped}};
