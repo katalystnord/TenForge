@@ -43,3 +43,4 @@ build-sanitize/
 # Datasets fetched at test time rather than committed (licence does not
 # cover redistribution; see CLAUDE.md, Fixtures).
 tests/fetched/
+.cache/

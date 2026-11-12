@@ -1,0 +1,18 @@
+{
+  "file": "polymer.csv",
+  "columns": {
+    "time": "time_s:s",
+    "extension": "extension_mm:mm",
+    "force": "force_kN:kN"
+  },
+  "area_mm2": 40.0,
+  "gauge_length_mm": 75.0,
+  "note": "Linear E=2.5 GPa to 0.4 % strain; maximum 60 MPa at 5 %; break at 20 % strain and 48 MPa.",
+  "answers": {
+    "Et_Pa": 2500000000.0,
+    "sigma_m_Pa": 60000000.0,
+    "epsilon_m_1": 0.05,
+    "epsilon_b_1": 0.2,
+    "sigma_b_Pa": 48000000.0
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "file": "ro-continuous.csv",
+  "columns": {
+    "time": "time_s:s",
+    "extension": "extension_mm:mm",
+    "force": "force_kN:kN"
+  },
+  "area_mm2": 78.54,
+  "gauge_length_mm": 50.0,
+  "note": "Ramberg-Osgood E=200 GPa, Rp0.2=300 MPa, n=10; Rm=500 MPa; fracture after the last point of the neck.",
+  "answers": {
+    "E_Pa": 200000000000.0,
+    "Rp0.2_Pa": 300000000.0,
+    "Rm_Pa": 500000000.0,
+    "Fm_N": 39270.0,
+    "Agt_1": 0.33326343375840417,
+    "Ag_1": 0.33076343375840417,
+    "At_1": 0.4132634337584042,
+    "A_1": 0.4112634337584042
+  }
+}

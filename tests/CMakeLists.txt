@@ -45,6 +45,19 @@ target_link_libraries(test_analysis_stands_alone PRIVATE tf_analysis)
 add_test(NAME analysis_headers_compile_without_qt
          COMMAND test_analysis_stands_alone)
 
+# --- The engine's primitives and the tension model ---------------------------
+# Built with tf_analysis's own dependencies only (tests/check.h, no Qt), so
+# the engine's tests prove it stands alone too.
+add_executable(test_primitives test_primitives.cpp)
+target_link_libraries(test_primitives PRIVATE tf_analysis)
+add_test(NAME engine_primitives COMMAND test_primitives)
+
+add_executable(test_tension_synthetic test_tension_synthetic.cpp)
+target_link_libraries(test_tension_synthetic PRIVATE tf_analysis)
+target_compile_definitions(test_tension_synthetic PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME tension_on_synthetic_curves COMMAND test_tension_synthetic)
+
 # --- The command line says what it is and what it cannot do yet -------------
 add_test(NAME cli_reports_its_version
          COMMAND tf-analyse --version)

@@ -1,0 +1,21 @@
+{
+  "file": "discontinuous.csv",
+  "columns": {
+    "time": "time_s:s",
+    "extension": "extension_mm:mm",
+    "force": "force_kN:kN"
+  },
+  "area_mm2": 120.64,
+  "gauge_length_mm": 50.0,
+  "note": "ReH=480 MPa; initial transient minimum 437 MPa; planted plateau minimum ReL=432 MPa; Rm=560 MPa.",
+  "answers": {
+    "E_Pa": 210000000000.0,
+    "ReH_Pa": 480000000.0,
+    "ReL_Pa": 432000000.0,
+    "Rm_Pa": 560000000.0,
+    "Agt_1": 0.15,
+    "Ag_1": 0.14733333333333332,
+    "At_1": 0.24,
+    "A_1": 0.238
+  }
+}

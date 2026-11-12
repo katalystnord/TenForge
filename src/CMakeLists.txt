@@ -3,6 +3,8 @@
 # settled decisions). It is the part every other target and every future
 # binding stands on, and it must be usable without a GUI toolkit.
 add_library(tf_analysis STATIC
+    analysis/Primitives.cpp
+    analysis/Tension.cpp
     analysis/Version.cpp
 )
 target_include_directories(tf_analysis PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
