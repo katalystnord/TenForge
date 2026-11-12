@@ -35,6 +35,10 @@ jobs:
         with:
           fetch-depth: 0   # git describe needs history and tags for the build id
 
+      # qt6-svg-plugins: the packaging deploys Qt's SVG icon engine (the
+      # window icon is an SVG) and stops when it is missing (first run,
+      # 2026-11-12: "Cannot deploy non-existing library file ...
+      # libqsvgicon.so").
       - name: Install dependencies
         uses: ./.github/actions/apt-deps
         timeout-minutes: 60
@@ -45,6 +49,7 @@ jobs:
             ninja-build cmake g++
             qt6-base-dev qt6-base-dev-tools libgl1-mesa-dev
             libeigen3-dev patchelf xvfb desktop-file-utils
+            qt6-svg-plugins
 
       - name: Build the AppImage
         env:
