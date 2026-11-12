@@ -1,0 +1,413 @@
+{
+  "format": "tenforge-profile",
+  "version": "1.0",
+  "id": "iso-6892-1-2019",
+  "profile_version": "0.1.0",
+  "title": "Metallic materials, tensile testing at room temperature",
+  "standard": {
+    "body": "ISO",
+    "number": "6892-1",
+    "edition": "2019"
+  },
+  "mode": "tension",
+  "inputs": {
+    "geometry": [
+      "area"
+    ],
+    "strain_source": "extensometer",
+    "measured": [
+      "force",
+      "extension"
+    ]
+  },
+  "conditioning": [
+    {
+      "step": "zero-point",
+      "method": "elastic-line",
+      "note": "Strains are counted from where the elastic line meets zero stress."
+    }
+  ],
+  "results": [
+    {
+      "id": "E",
+      "symbol": "E",
+      "name": "Slope of the elastic part",
+      "quantity": "E",
+      "unit": "Pa",
+      "method": {
+        "primitive": "linear-fit",
+        "fit": "regression",
+        "window": {
+          "axis": "stress",
+          "reference": "Rp0.2",
+          "from": {
+            "value": 0.1,
+            "unit": "1",
+            "source": {
+              "document": "ISO 6892-1:2019",
+              "clause": ""
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Fraction of the reference stress. Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text. On TENSTAND, 0.10 to 0.40 puts E inside the agreed range for 13 of 15 files (22 and 50 fall outside)."
+          },
+          "to": {
+            "value": 0.4,
+            "unit": "1",
+            "source": {
+              "document": "ISO 6892-1:2019",
+              "clause": ""
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Fraction of the reference stress. Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+          }
+        }
+      },
+      "report": {
+        "unit": "GPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "GPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "TenForge's choice; the standard's rounding for E not yet read."
+        }
+      }
+    },
+    {
+      "id": "Rp0.2",
+      "symbol": "R_p0.2",
+      "name": "0.2 % proof strength, non-proportional extension",
+      "quantity": "Rp0.2",
+      "unit": "Pa",
+      "method": {
+        "primitive": "offset-intersection",
+        "uses": "E",
+        "offset": {
+          "value": 0.002,
+          "unit": "1",
+          "source": {
+            "document": "ISO 6892-1:2019",
+            "clause": ""
+          },
+          "confirmed": true,
+          "confirmed_from": "the result's definition",
+          "confirmed_by": "",
+          "note": "0.2 % of the extensometer gauge length, by the result's name."
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 1,
+          "unit": "MPa",
+          "source": {
+            "document": "EN 10002-1:2001",
+            "clause": "17"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "As quoted in NPL Report DEPC MPE 015 (TENSTAND WP2, 2005), section 7.6 and 8: stress to 1 MPa. Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "ReH",
+      "symbol": "R_eH",
+      "name": "Upper yield strength",
+      "quantity": "ReH",
+      "unit": "Pa",
+      "method": {
+        "primitive": "sustained-peak",
+        "min_drop": {
+          "value": 0.01,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Smallest fall after the peak, as a fraction of it. TenForge's choice."
+        },
+        "min_span": {
+          "value": 0.0025,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Strain over which the stress must stay at or below the peak. TenForge's choice."
+        },
+        "max_plastic": {
+          "value": 0.001,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Largest non-proportional strain at the peak. TenForge's choice, measured on TENSTAND: agreed yield points have under 0.0002, noise and serrations 0.002 or more."
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 1,
+          "unit": "MPa",
+          "source": {
+            "document": "EN 10002-1:2001",
+            "clause": "17"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "As quoted in NPL Report DEPC MPE 015 (TENSTAND WP2, 2005). Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "ReL",
+      "symbol": "R_eL",
+      "name": "Lower yield strength",
+      "quantity": "ReL",
+      "unit": "Pa",
+      "method": {
+        "primitive": "minimum",
+        "uses": "ReH",
+        "ignore_initial_transient": {
+          "value": false,
+          "unit": "",
+          "source": {
+            "document": "NPL Report DEPC MPE 015 (TENSTAND WP2, 2005)",
+            "clause": "8, Table 9"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "The agreed ReL of file 53 (228.7 MPa) is the first minimum after ReH, so the transient is included. Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 1,
+          "unit": "MPa",
+          "source": {
+            "document": "EN 10002-1:2001",
+            "clause": "17"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "As quoted in NPL Report DEPC MPE 015 (TENSTAND WP2, 2005). Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "Fm",
+      "symbol": "F_m",
+      "name": "Maximum force",
+      "quantity": "Fm",
+      "unit": "N",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "kN",
+        "rounding": {
+          "value": 0.001,
+          "unit": "kN",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "TenForge's choice."
+        }
+      }
+    },
+    {
+      "id": "Rm",
+      "symbol": "R_m",
+      "name": "Tensile strength",
+      "quantity": "Rm",
+      "unit": "Pa",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 1,
+          "unit": "MPa",
+          "source": {
+            "document": "EN 10002-1:2001",
+            "clause": "17"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "As quoted in NPL Report DEPC MPE 015 (TENSTAND WP2, 2005). Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "Agt",
+      "symbol": "A_gt",
+      "name": "Percentage total extension at maximum force",
+      "quantity": "Agt",
+      "unit": "1",
+      "method": {
+        "primitive": "value-at",
+        "uses": "Rm"
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.5,
+          "unit": "%",
+          "source": {
+            "document": "EN 10002-1:2001",
+            "clause": "17, note 2"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "As quoted in NPL Report DEPC MPE 015 (TENSTAND WP2, 2005), section 7.6, which recommends 0.1 % for low ductility. Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "Ag",
+      "symbol": "A_g",
+      "name": "Percentage plastic extension at maximum force",
+      "quantity": "Ag",
+      "unit": "1",
+      "method": {
+        "primitive": "value-at",
+        "uses": "Rm"
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.5,
+          "unit": "%",
+          "source": {
+            "document": "EN 10002-1:2001",
+            "clause": "17, note 2"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "As for Agt. Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "At",
+      "symbol": "A_t",
+      "name": "Percentage total extension at fracture",
+      "quantity": "At",
+      "unit": "1",
+      "method": {
+        "primitive": "break",
+        "ratio": {
+          "value": 5.0,
+          "unit": "1",
+          "source": {
+            "document": "EN 10002-1:2001",
+            "clause": "A.4.6"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Fracture is effective when the force falls by more than 5 times the fall before; as quoted in NPL Report DEPC MPE 015 (TENSTAND WP2, 2005), section 7.8. Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        },
+        "min_drop": {
+          "value": 0.1,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "The fall must also be at least this fraction of Fm. TenForge's choice: EN 10002-1 A.4.6 also asks for a fall below 3 % of Fm, which NPL reports most files never reach because recording stops at the break."
+        }
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.5,
+          "unit": "%",
+          "source": {
+            "document": "EN 10002-1:2001",
+            "clause": "17, note 2"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "As for Agt. Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "A",
+      "symbol": "A",
+      "name": "Percentage elongation after fracture, from the extensometer",
+      "quantity": "A",
+      "unit": "1",
+      "method": {
+        "primitive": "break",
+        "uses": "At"
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.5,
+          "unit": "%",
+          "source": {
+            "document": "EN 10002-1:2001",
+            "clause": "17, note 2"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "As for Agt. Not yet read in ISO 6892-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    }
+  ],
+  "sequence": {},
+  "validity": [],
+  "statistics": {},
+  "report": {
+    "fields": [
+      "specimen",
+      "S0",
+      "Le",
+      "profile",
+      "results",
+      "conformity"
+    ]
+  }
+}

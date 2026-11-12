@@ -27,10 +27,31 @@ endforeach()
 add_library(tf_core STATIC
     core/ApplicationInfo.cpp
     core/Import.cpp
+    core/Profile.cpp
+    core/Results.cpp
 )
 target_include_directories(tf_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tf_core PUBLIC tf_analysis Qt6::Core)
-target_compile_definitions(tf_core PRIVATE TF_VERSION="${PROJECT_VERSION}")
+
+# The build identity written into every results file. Taken at configure
+# time (tools/run-tests.sh and the hook configure on every run).
+execute_process(COMMAND git describe --always --dirty --abbrev=12
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                OUTPUT_VARIABLE TF_BUILD OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+if(NOT TF_BUILD)
+    set(TF_BUILD "unknown")
+endif()
+target_compile_definitions(tf_core PRIVATE TF_VERSION="${PROJECT_VERSION}"
+                                           TF_BUILD="${TF_BUILD}")
+
+# The profiles shipped with TenForge, compiled in so the CLI and the GUI
+# find them without an install step: loadProfile("iso-6892-1-2019").
+file(GLOB TF_SHIPPED_PROFILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/profiles/*.json)
+qt_add_resources(tf_core "shipped_profiles"
+    PREFIX "/profiles"
+    BASE ${CMAKE_SOURCE_DIR}/profiles
+    FILES ${TF_SHIPPED_PROFILES})
 
 # --- tf_gui: the application window -----------------------------------------
 add_library(tf_gui STATIC

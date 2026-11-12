@@ -11,5 +11,6 @@ namespace tf::core {
 QString applicationName();      // "TenForge"
 QString applicationSubtitle();  // "open universal testing software"
 QString applicationVersion();
+QString applicationBuild();      // git describe at configure time; "unknown" outside git
 
 } // namespace tf::core

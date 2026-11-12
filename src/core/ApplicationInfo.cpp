@@ -17,4 +17,9 @@ QString applicationVersion()
     return QStringLiteral(TF_VERSION);
 }
 
+QString applicationBuild()
+{
+    return QStringLiteral(TF_BUILD);
+}
+
 } // namespace tf::core

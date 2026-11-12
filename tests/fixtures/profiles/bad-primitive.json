@@ -1,0 +1,224 @@
+{
+  "format": "tenforge-profile",
+  "version": "1.0",
+  "id": "bad-primitive",
+  "profile_version": "0.1.0",
+  "title": "Plastics, determination of tensile properties, general principles",
+  "standard": {
+    "body": "ISO",
+    "number": "527-1",
+    "edition": "2019"
+  },
+  "mode": "tension",
+  "inputs": {
+    "geometry": [
+      "area"
+    ],
+    "strain_source": "extensometer",
+    "measured": [
+      "force",
+      "extension"
+    ]
+  },
+  "conditioning": [
+    {
+      "step": "zero-point",
+      "method": "as-recorded",
+      "note": "Strains are counted from the recorded zero."
+    }
+  ],
+  "results": [
+    {
+      "id": "Et",
+      "symbol": "E_t",
+      "name": "Tensile modulus",
+      "quantity": "E",
+      "unit": "Pa",
+      "method": {
+        "primitive": "linear-fit",
+        "fit": "regression",
+        "window": {
+          "axis": "strain",
+          "from": {
+            "value": 0.0005,
+            "unit": "1",
+            "source": {
+              "document": "ISO 527-1:2019",
+              "clause": ""
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Lower strain of the modulus window. Not yet read in ISO 527-1:2019; to be confirmed from the purchased text."
+          },
+          "to": {
+            "value": 0.0025,
+            "unit": "1",
+            "source": {
+              "document": "ISO 527-1:2019",
+              "clause": ""
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Upper strain of the modulus window. Not yet read in ISO 527-1:2019; to be confirmed from the purchased text."
+          }
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "TenForge's choice. Not yet read in ISO 527-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "sigma_m",
+      "symbol": "σ_m",
+      "name": "Tensile strength (maximum stress)",
+      "quantity": "Rm",
+      "unit": "Pa",
+      "method": {
+        "primitive": "first-local-maximum"
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "TenForge's choice. Not yet read in ISO 527-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "epsilon_m",
+      "symbol": "ε_m",
+      "name": "Strain at tensile strength",
+      "quantity": "Agt",
+      "unit": "1",
+      "method": {
+        "primitive": "value-at",
+        "uses": "sigma_m"
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.1,
+          "unit": "%",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "TenForge's choice. Not yet read in ISO 527-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "sigma_b",
+      "symbol": "σ_b",
+      "name": "Stress at break",
+      "quantity": "Rb",
+      "unit": "Pa",
+      "method": {
+        "primitive": "break",
+        "ratio": {
+          "value": 5.0,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Break by force drop, as for metals. Not yet read in ISO 527-1:2019; to be confirmed from the purchased text."
+        },
+        "min_drop": {
+          "value": 0.1,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Smallest fall counted as the break, fraction of the maximum force. Not yet read in ISO 527-1:2019; to be confirmed from the purchased text."
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "TenForge's choice. Not yet read in ISO 527-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    },
+    {
+      "id": "epsilon_b",
+      "symbol": "ε_b",
+      "name": "Strain at break",
+      "quantity": "At",
+      "unit": "1",
+      "method": {
+        "primitive": "break",
+        "uses": "sigma_b"
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.1,
+          "unit": "%",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "TenForge's choice. Not yet read in ISO 527-1:2019; to be confirmed from the purchased text."
+        }
+      }
+    }
+  ],
+  "sequence": {},
+  "validity": [],
+  "statistics": {},
+  "report": {
+    "fields": [
+      "specimen",
+      "S0",
+      "Le",
+      "profile",
+      "results",
+      "conformity"
+    ]
+  }
+}

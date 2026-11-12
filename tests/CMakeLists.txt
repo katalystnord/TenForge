@@ -10,14 +10,20 @@
 #     first only for a future header no tf_analysis source includes;
 #   - Qt6::Core added to tf_analysis's link line: configure refuses
 #     (src/CMakeLists.txt guard);
-#   - empty engine version, wrong CLI version, changed refusal text, refusal
-#     exiting 0: each turned its own test red;
+#   - empty engine version, wrong CLI version: each turned its own test red;
 #   - window title without the subtitle, empty state without "release 0.1",
 #     chart widget hidden: each turned main_window_walkthrough red.
-#   NOT caught by `cli_refusing_a_file_exits_non_zero` alone: a crash also
-#   exits non-zero and so also "passes" WILL_FAIL. Its sibling
-#   `cli_refuses_a_file_and_says_when_it_will_not` covers that, since a crash
-#   prints no refusal.
+#
+# NEGATIVE CHECKS, 2026-11-12, Phase 1:
+#   - engine and importer tests were written first and seen red against
+#     stubs (12 of 14 primitive cases, all tension and import cases);
+#   - profiles_and_results_documents was written after its code, so each
+#     property was broken instead: primitive check removed, rounding
+#     truncating, every parameter treated as confirmed, a missing result
+#     written as 0, a user profile left unlabelled, the profile's modulus
+#     window ignored. Each turned at least one case red.
+#   - the CLI refusals are each checked twice (message, and WILL_FAIL for
+#     the exit code), since a crash also exits non-zero.
 #   NOT exercised: the chart's render-size assertion was not separately
 #   broken (no clean way to deny the widget a GL context in the test); it
 #   rests on VTK reporting zero size without one.
@@ -65,22 +71,58 @@ target_compile_definitions(test_import PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME import_machine_exports COMMAND test_import)
 
+# --- Profiles in, results documents out (tf_core) ----------------------------
+add_executable(test_profiles_results test_profiles_results.cpp)
+target_link_libraries(test_profiles_results PRIVATE tf_core)
+target_compile_definitions(test_profiles_results PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME profiles_and_results_documents COMMAND test_profiles_results)
+
 # --- The command line says what it is and what it cannot do yet -------------
 add_test(NAME cli_reports_its_version
          COMMAND tf-analyse --version)
 set_tests_properties(cli_reports_its_version PROPERTIES
     PASS_REGULAR_EXPRESSION "^tf-analyse ${PROJECT_VERSION}")
 
-# PASS_REGULAR_EXPRESSION ignores the exit code, so the refusal's non-zero
-# exit is checked separately below rather than assumed.
-add_test(NAME cli_refuses_a_file_and_says_when_it_will_not
-         COMMAND tf-analyse some-test.csv)
-set_tests_properties(cli_refuses_a_file_and_says_when_it_will_not PROPERTIES
-    PASS_REGULAR_EXPRESSION "arrives in release 0\\.1\\. Nothing was read")
-add_test(NAME cli_refusing_a_file_exits_non_zero
-         COMMAND tf-analyse some-test.csv)
-set_tests_properties(cli_refusing_a_file_exits_non_zero PROPERTIES
-    WILL_FAIL TRUE)
+# The analysis from the command line, on a committed synthetic curve with a
+# known answer (Rp0.2 = 300 MPa exactly, Rm = 500 MPa).
+set(TF_SYN ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/synthetic)
+add_test(NAME cli_analyses_a_file_with_a_shipped_profile
+         COMMAND tf-analyse --profile iso-6892-1-2019 --area "78.54 mm2"
+                 --gauge-length "50 mm" ${TF_SYN}/ro-continuous.csv)
+set_tests_properties(cli_analyses_a_file_with_a_shipped_profile PROPERTIES
+    PASS_REGULAR_EXPRESSION "Rp0\\.2 +300 MPa .*Rm +500 MPa")
+
+# Conformity is said on screen, not only in the file (tenet 9).
+add_test(NAME cli_says_the_results_are_aligned_not_to_standard
+         COMMAND tf-analyse --profile iso-6892-1-2019 --area "78.54 mm2"
+                 --gauge-length "50 mm" ${TF_SYN}/ro-continuous.csv)
+set_tests_properties(cli_says_the_results_are_aligned_not_to_standard PROPERTIES
+    PASS_REGULAR_EXPRESSION "Conformity: ALIGNED.*force calibration")
+
+add_test(NAME cli_writes_results_json_to_standard_output
+         COMMAND tf-analyse --profile iso-527-1-2019 --area "40 mm2"
+                 --gauge-length "75 mm" --json - ${TF_SYN}/polymer.csv)
+set_tests_properties(cli_writes_results_json_to_standard_output PROPERTIES
+    PASS_REGULAR_EXPRESSION "\"format\": \"tenforge-results\".*\"id\": \"Et\"")
+
+# PASS_REGULAR_EXPRESSION ignores the exit code, so each refusal is checked
+# twice: once for what it says, once (WILL_FAIL) that it exits non-zero.
+add_test(NAME cli_without_a_profile_says_which_exist
+         COMMAND tf-analyse ${TF_SYN}/polymer.csv)
+set_tests_properties(cli_without_a_profile_says_which_exist PROPERTIES
+    PASS_REGULAR_EXPRESSION "--profile.*iso-527-1-2019")
+add_test(NAME cli_without_a_profile_exits_non_zero
+         COMMAND tf-analyse ${TF_SYN}/polymer.csv)
+set_tests_properties(cli_without_a_profile_exits_non_zero PROPERTIES WILL_FAIL TRUE)
+
+add_test(NAME cli_without_an_area_names_what_is_missing
+         COMMAND tf-analyse --profile iso-527-1-2019 ${TF_SYN}/polymer.csv)
+set_tests_properties(cli_without_an_area_names_what_is_missing PROPERTIES
+    PASS_REGULAR_EXPRESSION "cross-section area S0 is not in the file")
+add_test(NAME cli_without_an_area_exits_non_zero
+         COMMAND tf-analyse --profile iso-527-1-2019 ${TF_SYN}/polymer.csv)
+set_tests_properties(cli_without_an_area_exits_non_zero PROPERTIES WILL_FAIL TRUE)
 
 # --- Walkthrough: the real window -------------------------------------------
 add_executable(test_main_window_walkthrough test_main_window_walkthrough.cpp)
