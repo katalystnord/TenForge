@@ -54,8 +54,8 @@ the rest of the file disagrees with a tenet, the tenet wins.
   configure-time check and a test that compiles every public header with
   no Qt on the include path enforce it.
 - **Standards:** profile parameters carry their source and a confirmed or
-  unconfirmed flag. ASTM prohibits AI use of its standards, so ASTM
-  parameters are entered by a person who has read the purchased text.
+  unconfirmed flag. Every standard is treated alike, whichever body
+  issued it; profiles hold parameters and clause references, never text.
 - **Attribution** goes in README and NOTICE, never the About dialog
   (`katalystnord/policy-on-attribution.md`). Datasets follow
   `katalystnord/policy-on-training-and-extraction.md`.

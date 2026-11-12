@@ -49,8 +49,8 @@ A profile is a versioned data file (JSON) naming: mode, inputs (specimen
 geometry, fixture parameters), results, windows, detectors, sequence
 (approach, rates, speed changes, preflex cycles, stop rules), rounding,
 report fields. **Every parameter carries its source and a confirmed or
-unconfirmed flag.** ASTM parameters are entered by a person who has read
-the purchased standard (ASTM prohibits AI use of its standards).
+unconfirmed flag.** Every standard is treated alike, whichever body
+issued it; profiles hold parameters and clause references, never text.
 
 ### 3.3 Test record (the contract, specified before code)
 
@@ -202,7 +202,7 @@ criteria met and verified by driving the real thing.
 - Drivers: open protocol, MMTK, Open-Pull, GRBL/grblHAL, LabJack,
   Phidgets.
 - Profiles: ISO 37, ISO 1924-2, ISO 3386, ISO 14126, ISO 7438; ASTM
-  profiles as their parameters are entered by a person.
+  profiles, confirmed from purchased texts like any other.
 - 1.0 criteria: every shipped profile validated against a fixture; manual
   complete; every confirmed parameter traceable to a read standard.
 
@@ -221,5 +221,5 @@ hardware track after the web and patent search.
 | Phase 1 | Buy ISO 6892-1:2019 and ISO 527-1/-2 (parameters stay flagged until read); ask NPL about committing TENSTAND (optional). |
 | Phase 3 | Buy ISO 604, 844, 178, 14125. |
 | Phase 5 | A Klipper bench rig with a load cell. |
-| Phase 8 | Decide who reads ASTM texts. |
+| Phase 8 | Buy the ASTM texts to be confirmed. |
 | Open | SurView side of the file contract: frame identity in its series CSV; whether it reads `frames.csv`. |

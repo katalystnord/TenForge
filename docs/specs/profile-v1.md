@@ -16,11 +16,10 @@ who has read a standard check it without reading C++.
    parameters runs, but every result it produces is labelled aligned, not
    to the standard (results-v1.md), and the GUI says which parameters are
    unconfirmed.
-3. **ASTM parameters are entered by a person.** ASTM prohibits AI use of
-   its standards; an ASTM parameter is `confirmed` only with an
-   `entered_by` naming the person who read the purchased text.
-4. **We never ship the standard's text.** A profile holds parameters and
-   clause references, not quotations.
+3. **Every standard is treated alike**, whichever body issued it (ISO,
+   ASTM, EN, DIN or other). The same rules apply to all of them.
+4. **We never ship the standard's text.** A profile holds parameters
+   (values, units, methods) and clause references, not quotations.
 5. **Profiles are versioned**, and results record the exact profile
    version and SHA-256 that produced them.
 
@@ -59,13 +58,14 @@ Every number in a profile is a parameter object:
   "source": { "document": "ISO 527-1:2019", "clause": "3.9" },
   "confirmed": false,
   "confirmed_from": "",
-  "entered_by": "",
+  "confirmed_by": "",
   "note": "From the public preview's definition of the modulus window; clause number to verify against the bought text."
 }
 ```
 
 `confirmed` is true only when `confirmed_from` names the read text (e.g.
-`purchased copy` or `public preview`). Clause numbers in examples here are
+`purchased copy` or `public preview`); `confirmed_by` optionally names who
+checked it. Clause numbers in examples here are
 illustrative until checked.
 
 ## 4. Sections
