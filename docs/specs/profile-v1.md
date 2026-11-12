@@ -1,6 +1,7 @@
 # TenForge profile, version 1
 
-**Status: DRAFT, awaiting David's approval (Phase 0).**
+**Status: APPROVED by David, 2026-11-12.** A contract from here: changes
+are additive within version 1; anything else is version 2.
 
 A profile is one standard procedure written as data: what to measure, how
 to run the test, and how to compute and report each result. The analysis
@@ -140,10 +141,10 @@ and record metadata.
 - Every shipped profile has fixtures with independently known answers
   (ROADMAP, Phase 8 criteria).
 
-## 6. Open questions for approval
+## 6. Decisions (David, 2026-11-12)
 
-1. JSON, or YAML for easier hand editing? Proposed: JSON (no ambiguity,
-   one parser shared with records and results).
-2. User-defined profiles: allowed from 0.1, clearly marked as not shipped
-   with TenForge? Proposed: yes, always labelled aligned unless every
-   parameter is confirmed.
+1. **JSON**, not YAML: no ambiguity, one parser shared with records and
+   results.
+2. **User-defined profiles are allowed from 0.1**, clearly marked as not
+   shipped with TenForge, and labelled aligned unless every parameter is
+   confirmed.
