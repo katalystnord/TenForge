@@ -4,6 +4,7 @@
 # binding stands on, and it must be usable without a GUI toolkit.
 add_library(tf_analysis STATIC
     analysis/Primitives.cpp
+    analysis/Statistics.cpp
     analysis/Tension.cpp
     analysis/Version.cpp
 )

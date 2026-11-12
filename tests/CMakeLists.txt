@@ -65,6 +65,10 @@ add_executable(test_primitives test_primitives.cpp)
 target_link_libraries(test_primitives PRIVATE tf_analysis)
 add_test(NAME engine_primitives COMMAND test_primitives)
 
+add_executable(test_statistics test_statistics.cpp)
+target_link_libraries(test_statistics PRIVATE tf_analysis)
+add_test(NAME engine_statistics_and_energy COMMAND test_statistics)
+
 add_executable(test_tension_synthetic test_tension_synthetic.cpp)
 target_link_libraries(test_tension_synthetic PRIVATE tf_analysis)
 target_compile_definitions(test_tension_synthetic PRIVATE

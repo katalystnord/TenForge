@@ -117,8 +117,12 @@ src/analysis/   tf_analysis  standards engine, Eigen only, no Qt
 src/core/       tf_core      record, profiles, calibration, sequencer, drivers API
 src/gui/        tf_gui       the application window
 src/cli/        tf-analyse   headless command line
-tests/          one executable per subject
+profiles/       shipped profiles (JSON), compiled into tf_core
+tests/          one executable per subject; fixtures/ committed data
+tests/validation/  agreed values and the fetch script for data that may
+                not be committed (TENSTAND)
 docs/specs/     the file contracts: test record, profile, results
+docs/validation/  what each phase was validated against, with every number
 tools/          run-tests.sh, check-no-em-dashes.sh, sanitize.sh, git-hooks/
 ```
 

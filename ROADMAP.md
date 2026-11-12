@@ -141,6 +141,13 @@ criteria met and verified by driving the real thing.
   committed), TENSTAND fetched at test time.
 - Exit: all TENSTAND files within EN 10002-1 A.5 tolerances; BAM results
   match the reported values; negative checks recorded.
+- **Status, 2026-11-12: exit criteria met.** TENSTAND 137 comparisons,
+  none failed; BAM ReH, Rm and Fm within limits on all 10 specimens;
+  negative checks in `tests/CMakeLists.txt`. Details and known gaps:
+  [docs/validation/phase-1.md](docs/validation/phase-1.md). Remaining from
+  this phase's list: primitive 6's energy and primitive 8's statistics
+  exist as tested primitives but no profile uses them yet (series arrive
+  with Phase 2); the ISO texts are still to be bought and read.
 
 ### Phase 2: First release, analysis app (M)
 
