@@ -22,6 +22,13 @@
 #     truncating, every parameter treated as confirmed, a missing result
 #     written as 0, a user profile left unlabelled, the profile's modulus
 #     window ignored. Each turned at least one case red.
+#   - TENSTAND: the profile's yield rule loosened (max_plastic 0.005 under
+#     the first rule) turned 6 comparisons red (false yield points on 38, 46,
+#     63); the modulus window widened to 0.10..0.80 turned 5 red (Rp on 17,
+#     22, 42).
+#   - BAM S355 was red before it was green: under the first yield rule
+#     (max_plastic 0.001, tuned on TENSTAND alone) no specimen's ReH was
+#     found. The rule was re-measured on both datasets (Tension.h).
 #   - the CLI refusals are each checked twice (message, and WILL_FAIL for
 #     the exit code), since a crash also exits non-zero.
 #   NOT exercised: the chart's render-size assertion was not separately
@@ -77,6 +84,42 @@ target_link_libraries(test_profiles_results PRIVATE tf_core)
 target_compile_definitions(test_profiles_results PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME profiles_and_results_documents COMMAND test_profiles_results)
+
+# --- Validation: NPL TENSTAND (Phase 1 exit criterion) -----------------------
+# The 15 Premium Quality files carry no licence statement, so they are not
+# committed: a setup test fetches them into the build tree (or the cache
+# directory below), pinned by SHA-256. The agreed values are facts from
+# NPL's public report and are committed (tests/validation/).
+option(TF_VALIDATION_DOWNLOADS "Fetch validation datasets that cannot be committed" ON)
+set(TF_VALIDATION_CACHE "${CMAKE_BINARY_DIR}/validation-data" CACHE PATH
+    "Where fetched validation datasets are kept between builds")
+add_executable(validate_tenstand validate_tenstand.cpp)
+target_link_libraries(validate_tenstand PRIVATE tf_core)
+if(TF_VALIDATION_DOWNLOADS)
+    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/validation/tenstand-agreed.json tf_tenstand_json)
+    string(JSON tf_tenstand_url GET "${tf_tenstand_json}" data url)
+    string(JSON tf_tenstand_sha GET "${tf_tenstand_json}" data sha256)
+    add_test(NAME fetch_tenstand
+             COMMAND ${CMAKE_COMMAND} -DURL=${tf_tenstand_url} -DSHA256=${tf_tenstand_sha}
+                     -DDEST=${TF_VALIDATION_CACHE}/tenstand
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/validation/fetch.cmake)
+    set_tests_properties(fetch_tenstand PROPERTIES FIXTURES_SETUP tenstand)
+    add_test(NAME tenstand_within_en10002_annex_a5
+             COMMAND validate_tenstand
+                     ${CMAKE_CURRENT_SOURCE_DIR}/validation/tenstand-agreed.json
+                     ${TF_VALIDATION_CACHE}/tenstand/data
+                     ${CMAKE_BINARY_DIR}/tenstand-report.md)
+    set_tests_properties(tenstand_within_en10002_annex_a5 PROPERTIES FIXTURES_REQUIRED tenstand)
+else()
+    message(STATUS "TF_VALIDATION_DOWNLOADS is OFF: the TENSTAND validation is not run")
+endif()
+
+# --- Validation: BAM S355 (committed, CC BY 4.0) -----------------------------
+add_executable(validate_bam_s355 validate_bam_s355.cpp)
+target_link_libraries(validate_bam_s355 PRIVATE tf_core)
+target_compile_definitions(validate_bam_s355 PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME bam_s355_matches_reported_results COMMAND validate_bam_s355)
 
 # --- The command line says what it is and what it cannot do yet -------------
 add_test(NAME cli_reports_its_version

@@ -48,13 +48,14 @@ struct TensionMethod {
 
     // Discontinuous yield (ReH, ReL).
     bool yieldPoint = true;
-    double yieldMinDrop = 0.01;        // fraction of the peak stress
-    double yieldMinSpan = 0.0025;      // strain the stress stays below the peak
-    // A yield point sits at the end of the elastic part. On the TENSTAND set
-    // the two agreed yield points have under 0.0002 non-proportional strain
-    // at the peak; noise peaks and serrations (files 38, 46, 61, 63) have
-    // 0.002 or more. 0.001 separates them.
-    double yieldMaxPlastic = 0.001;    // non-proportional strain at the peak, at most
+    // Measured on NPL TENSTAND and BAM S355 (2026-11-12): real yield points
+    // fall 0.99 to 15 % and stay below the peak for 0.8 to 3.7 % strain,
+    // with up to about 0.005 non-proportional strain at the peak. Noise and
+    // serration peaks before 0.01 plastic strain stay below for at most
+    // 0.6 % strain.
+    double yieldMinDrop = 0.005;       // fraction of the peak stress
+    double yieldMinSpan = 0.0075;      // strain the stress stays below the peak
+    double yieldMaxPlastic = 0.01;     // non-proportional strain at the peak, at most
     bool lowerYieldIgnoresTransient = false;
 
     // Fracture by force drop (see fracture() in Primitives.h).

@@ -1,0 +1,102 @@
+{
+ "source": "BAM, Schilling M., Glaubitz S., Matzak K., Rehmer B., Skrotzki B. (2022): Full dataset of several mechanical tests on an S355 steel sheet as reference data for digital representations, version 1.0.0. Zenodo, doi:10.5281/zenodo.6778336. CC BY 4.0. Values transcribed from tensile_test.zip, 02_secondary_data/results_protocols/tensile_test_results.xlsx (sheets Festigkeitskennwerte and Verformungskennwerte), read 2026-11-12.",
+ "archive_sha256": "b7dae010538a8145ca2ceeca218cbea0b6492493089b8f0bb7e4ff25f582e580",
+ "notes": [
+  "Tested to DIN EN ISO 6892-1 on an Instron 4505 with an HBM extensometer of 50 mm nominal gauge length; the extension column is the extensometer's, in %.",
+  "The extensometer was removed at about 3.9 % strain (Zx1: about 1.9 %), so Ag, Agt, At and A cannot be read from the files; A was measured on the broken specimens (L0 = 60 mm) and is given for reference only.",
+  "BAM reports ReH, Fm, Rm and E; Rp0.2 and ReL are left empty in the protocol.",
+  "Zx1 was run at a higher crosshead speed than the others (protocol remark)."
+ ],
+ "specimens": {
+  "Zx1": {
+   "S0_mm2": 120.63603833333333,
+   "FeH_kN": 45.84169456666667,
+   "ReH_MPa": 380,
+   "Fm_kN": 62.006923703333335,
+   "Rm_MPa": 514,
+   "E_GPa": 194,
+   "A_percent_measured_after_fracture": null
+  },
+  "Zx2": {
+   "S0_mm2": 120.44377100000001,
+   "FeH_kN": 45.648189209,
+   "ReH_MPa": 379,
+   "Fm_kN": 60.703660584000005,
+   "Rm_MPa": 504,
+   "E_GPa": 199,
+   "A_percent_measured_after_fracture": 35
+  },
+  "Zx3": {
+   "S0_mm2": 120.39596666666667,
+   "FeH_kN": 45.63007136666667,
+   "ReH_MPa": 379,
+   "Fm_kN": 60.6795672,
+   "Rm_MPa": 504,
+   "E_GPa": 199,
+   "A_percent_measured_after_fracture": 35
+  },
+  "Zx4": {
+   "S0_mm2": 120.01447933333334,
+   "FeH_kN": 46.56561798133334,
+   "ReH_MPa": 388,
+   "Fm_kN": 62.28751477400001,
+   "Rm_MPa": 519,
+   "E_GPa": 196,
+   "A_percent_measured_after_fracture": 35
+  },
+  "Zy1": {
+   "S0_mm2": 120.67934666666667,
+   "FeH_kN": 48.15105932000001,
+   "ReH_MPa": 399,
+   "Fm_kN": 61.30510810666667,
+   "Rm_MPa": 508,
+   "E_GPa": 210,
+   "A_percent_measured_after_fracture": null
+  },
+  "Zy2": {
+   "S0_mm2": 120.709887,
+   "FeH_kN": 48.163244913,
+   "ReH_MPa": 399,
+   "Fm_kN": 61.199912708999996,
+   "Rm_MPa": 507,
+   "E_GPa": 214,
+   "A_percent_measured_after_fracture": 35
+  },
+  "Zy3": {
+   "S0_mm2": 120.66265866666664,
+   "FeH_kN": 49.230364735999984,
+   "ReH_MPa": 408,
+   "Fm_kN": 60.93464262666666,
+   "Rm_MPa": 505,
+   "E_GPa": 206,
+   "A_percent_measured_after_fracture": 33.5
+  },
+  "Zy4": {
+   "S0_mm2": 120.582838,
+   "FeH_kN": 49.077215065999994,
+   "ReH_MPa": 407,
+   "Fm_kN": 61.979578732,
+   "Rm_MPa": 514,
+   "E_GPa": 211,
+   "A_percent_measured_after_fracture": 33
+  },
+  "Zd2": {
+   "S0_mm2": 120.71483699999999,
+   "FeH_kN": 48.165219963,
+   "ReH_MPa": 399,
+   "Fm_kN": 62.16814105499999,
+   "Rm_MPa": 515,
+   "E_GPa": 201,
+   "A_percent_measured_after_fracture": 33.5
+  },
+  "Zd3": {
+   "S0_mm2": 120.707063,
+   "FeH_kN": 47.79999694800001,
+   "ReH_MPa": 396,
+   "Fm_kN": 61.681309193000004,
+   "Rm_MPa": 511,
+   "E_GPa": 195,
+   "A_percent_measured_after_fracture": 33
+  }
+ }
+}

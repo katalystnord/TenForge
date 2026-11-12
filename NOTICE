@@ -1,0 +1,23 @@
+TenForge, Katalyst Nord.
+Licensed under the GNU Lesser General Public License, version 2.1 or later
+(see LICENSE).
+
+Third-party material in this repository
+---------------------------------------
+
+tests/fixtures/bam-s355/*.csv
+    From: Schilling, M., Glaubitz, S., Matzak, K., Rehmer, B., Skrotzki, B.
+    (2022). Full dataset of several mechanical tests on an S355 steel sheet
+    as reference data for digital representations (1.0.0). Zenodo.
+    https://doi.org/10.5281/zenodo.6778336
+    Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+    Unchanged. Used as validation data for the test suite.
+
+Data used by the test suite but not included
+--------------------------------------------
+
+NPL TENSTAND Premium Quality ASCII datafiles (National Physical
+Laboratory, TENSTAND project, EU G6RD-CT-2000-00412). Fetched at test time
+from npl.co.uk; no licence is stated for them, so they are not included.
+The agreed values in tests/validation/tenstand-agreed.json are transcribed
+from NPL Report DEPC MPE 015 (2005), Table 9.

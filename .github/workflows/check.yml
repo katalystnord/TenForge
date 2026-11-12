@@ -51,12 +51,22 @@ jobs:
             qt6-base-dev qt6-base-dev-tools libgl1-mesa-dev
             libeigen3-dev xvfb
 
+      # NPL's TENSTAND files may not be committed (no licence stated); the
+      # suite fetches them, pinned by SHA-256. Cached so a run does not
+      # depend on npl.co.uk being up; the key changes with the pinned hash.
+      - name: Validation data cache
+        uses: actions/cache@v4
+        with:
+          path: validation-data
+          key: validation-${{ hashFiles('tests/validation/tenstand-agreed.json') }}
+
       - name: Configure
         run: |
+          extra="-DTF_VALIDATION_CACHE=$PWD/validation-data"
           if [ "${{ matrix.variant }}" = "sanitized" ]; then
-            cmake -S . -B build -G Ninja -DTF_SANITIZE=ON
+            cmake -S . -B build -G Ninja -DTF_SANITIZE=ON $extra
           else
-            cmake -S . -B build -G Ninja
+            cmake -S . -B build -G Ninja $extra
           fi
 
       - name: Build

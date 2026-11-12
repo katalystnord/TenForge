@@ -44,7 +44,7 @@ TF_CASE(metals_profile_fills_the_engine_method)
     TF_NEAR(m.modulusReferenceOffset, 0.002, 0);
     TF_CHECK(m.proofOffsets.size() == 1);
     TF_CHECK(m.yieldPoint);
-    TF_NEAR(m.yieldMaxPlastic, 0.001, 0);
+    TF_NEAR(m.yieldMaxPlastic, 0.01, 0);
     TF_CHECK(!m.lowerYieldIgnoresTransient);
     TF_NEAR(m.fractureRatio, 5.0, 0);
     TF_NEAR(m.fractureMinDrop, 0.10, 0);

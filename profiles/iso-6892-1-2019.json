@@ -129,6 +129,30 @@
       "method": {
         "primitive": "sustained-peak",
         "min_drop": {
+          "value": 0.005,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Smallest fall after the peak, as a fraction of it. TenForge's choice: real yield points on BAM S355 fall 0.99 % and more."
+        },
+        "min_span": {
+          "value": 0.0075,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Strain over which the stress must stay at or below the peak. TenForge's choice, measured: real yield points on TENSTAND and BAM S355 stay below for 0.8 % strain or more, noise and serrations before 1 % plastic strain for 0.6 % at most."
+        },
+        "max_plastic": {
           "value": 0.01,
           "unit": "1",
           "source": {
@@ -138,31 +162,7 @@
           "confirmed": false,
           "confirmed_from": "",
           "confirmed_by": "",
-          "note": "Smallest fall after the peak, as a fraction of it. TenForge's choice."
-        },
-        "min_span": {
-          "value": 0.0025,
-          "unit": "1",
-          "source": {
-            "document": "TenForge",
-            "clause": ""
-          },
-          "confirmed": false,
-          "confirmed_from": "",
-          "confirmed_by": "",
-          "note": "Strain over which the stress must stay at or below the peak. TenForge's choice."
-        },
-        "max_plastic": {
-          "value": 0.001,
-          "unit": "1",
-          "source": {
-            "document": "TenForge",
-            "clause": ""
-          },
-          "confirmed": false,
-          "confirmed_from": "",
-          "confirmed_by": "",
-          "note": "Largest non-proportional strain at the peak. TenForge's choice, measured on TENSTAND: agreed yield points have under 0.0002, noise and serrations 0.002 or more."
+          "note": "Largest non-proportional strain at the peak. TenForge's choice, measured: up to about 0.005 on BAM S355; it keeps the search before the plateau near maximum force."
         }
       },
       "report": {
