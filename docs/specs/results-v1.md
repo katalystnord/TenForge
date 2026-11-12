@@ -43,6 +43,14 @@ can be trusted. Written into the record's `results/` folder; one
 }
 ```
 
+`record` (refined while implementing, 2026-11-12): inside a record the
+manifest lists `results.json` with its hash, so the results cannot also
+carry the manifest's hash. There `manifest_sha256` is `null` and
+`record.inputs` lists the record files the analysis read, each with its
+path and SHA-256 (`test.json` and the channel files). `source.path` is
+then relative to the record (`source/<file>`). For results written
+outside a record (tf-analyse), `record` is `null`.
+
 ### 2.1 Conformity
 
 `to-standard` only when all of these hold; otherwise `aligned`, with one

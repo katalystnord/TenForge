@@ -31,6 +31,10 @@
 #     found. The rule was re-measured on both datasets (Tension.h).
 #   - the CLI refusals are each checked twice (message, and WILL_FAIL for
 #     the exit code), since a crash also exits non-zero.
+#   - Phase 2: specimen_geometry_and_json, test_record_written_and_opened
+#     and analysis_session_guides_and_analyses were written first and seen
+#     red against stubs (8 of 9, abort, 12 of 12). Then one real defect
+#     caught: a notice capitalised its leading path ("Results/...").
 #   NOT exercised: the chart's render-size assertion was not separately
 #   broken (no clean way to deny the widget a GL context in the test); it
 #   rests on VTK reporting zero size without one.
@@ -88,6 +92,24 @@ target_link_libraries(test_profiles_results PRIVATE tf_core)
 target_compile_definitions(test_profiles_results PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME profiles_and_results_documents COMMAND test_profiles_results)
+
+# --- The specimen and the test record (tf_core) ------------------------------
+add_executable(test_specimen test_specimen.cpp)
+target_link_libraries(test_specimen PRIVATE tf_core)
+add_test(NAME specimen_geometry_and_json COMMAND test_specimen)
+
+add_executable(test_record test_record.cpp)
+target_link_libraries(test_record PRIVATE tf_core)
+target_compile_definitions(test_record PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME test_record_written_and_opened COMMAND test_record)
+
+# --- The analysis session behind the window (tf_core) -----------------------
+add_executable(test_session test_session.cpp)
+target_link_libraries(test_session PRIVATE tf_core)
+target_compile_definitions(test_session PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME analysis_session_guides_and_analyses COMMAND test_session)
 
 # --- Validation: NPL TENSTAND (Phase 1 exit criterion) -----------------------
 # The 15 Premium Quality files carry no licence statement, so they are not

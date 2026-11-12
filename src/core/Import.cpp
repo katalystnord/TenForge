@@ -157,6 +157,21 @@ const PreambleEntry *preamble(const Table &t, const QStringList &keys)
     return nullptr;
 }
 
+const QRegularExpression &forceRe()
+{
+    static const QRegularExpression re(R"(force|load|kraft)", QRegularExpression::CaseInsensitiveOption);
+    return re;
+}
+
+const QRegularExpression &extensionRe()
+{
+    static const QRegularExpression re(R"(extensometer|extension|elongation|strain|dehnung)",
+                                       QRegularExpression::CaseInsensitiveOption);
+    return re;
+}
+
+const char *kPreferExtensometer = "extensometer";
+
 QString listColumns(const QStringList &names)
 {
     return "the file has: " + names.join(", ");
@@ -295,13 +310,11 @@ TensionImport toTension(const Table &t, const TensionMapping &m)
         out.notes << "\"" + t.names[col] + "\" taken as " + what + " by its name";
         return {};
     };
-    const auto ci = QRegularExpression::CaseInsensitiveOption;
     int fc = -1, ec = -1;
-    QString err = choose(m.force, QRegularExpression(R"(force|load|kraft)", ci), "force", {}, fc);
+    QString err = choose(m.force, forceRe(), "force", {}, fc);
     if (!err.isEmpty())
         return fail(err);
-    err = choose(m.extension, QRegularExpression(R"(extensometer|extension|elongation|strain|dehnung)", ci),
-                 "extension", "extensometer", ec);
+    err = choose(m.extension, extensionRe(), "extension", kPreferExtensometer, ec);
     if (!err.isEmpty())
         return fail(err);
     out.forceColumn = t.names[fc];
@@ -361,11 +374,93 @@ TensionImport toTension(const Table &t, const TensionMapping &m)
         return fail("the extensometer gauge length is not in the file; give it (e.g. 50 mm)");
     }
 
+    out.forceUnit = fu;
+    out.extensionUnit = eu;
+    out.extensionIsStrain = bool(sf);
     const double ef = sf ? *sf : *lf;
     for (double v : t.columns[fc])
         out.input.force.push_back(v * *ff);
     for (double v : t.columns[ec])
         out.input.extension.push_back(v * ef);
+    return out;
+}
+
+namespace {
+
+QString guess(const Table &t, const QRegularExpression &re, const QString &prefer,
+              const QString &what, QString *why)
+{
+    QList<int> hits = matching(t.names, re);
+    if (hits.size() > 1 && !prefer.isEmpty()) {
+        QList<int> both;
+        for (int h : matching(t.names, QRegularExpression(prefer, QRegularExpression::CaseInsensitiveOption)))
+            if (hits.contains(h))
+                both << h;
+        if (both.size() == 1)
+            hits = both;
+    }
+    if (hits.size() == 1)
+        return t.names[hits.front()];
+    if (why)
+        *why = hits.isEmpty() ? "no column's name says it is " + what
+                              : QString("%1 columns could be %2").arg(hits.size()).arg(what);
+    return {};
+}
+
+} // namespace
+
+QString guessForceColumn(const Table &t, QString *why)
+{
+    return guess(t, forceRe(), {}, "force", why);
+}
+
+QString guessExtensionColumn(const Table &t, QString *why)
+{
+    return guess(t, extensionRe(), kPreferExtensometer, "extension", why);
+}
+
+QString columnUnit(const Table &t, const QString &column)
+{
+    const int col = findColumn(t.names, column);
+    if (col < 0)
+        return {};
+    if (!t.units.value(col).isEmpty())
+        return t.units[col];
+    const int us = t.names[col].lastIndexOf('_');
+    if (us < 0)
+        return {};
+    const QString u = t.names[col].mid(us + 1);
+    for (const char *d : {"force", "length", "strain", "time"})
+        if (siFactor(u, d))
+            return u;
+    return {};
+}
+
+std::optional<double> preambleQuantity(const Table &t, const QStringList &keys,
+                                       const QString &dimension, QString *key)
+{
+    const PreambleEntry *p = preamble(t, keys);
+    if (!p)
+        return std::nullopt;
+    if (key)
+        *key = p->key;
+    return parseQuantity(p->value + " " + p->unit, dimension);
+}
+
+QStringList knownUnits(const QString &dimension)
+{
+    static const std::map<QString, QStringList> order{
+        {"force", {"N", "kN", "MN", "mN", "lbf", "kgf"}},
+        {"length", {"mm", "m", "cm", "um", "in"}},
+        {"strain", {"%", "1", "mm/mm"}},
+        {"area", {"mm2", "m2", "cm2", "in2"}},
+    };
+    QStringList out;
+    const auto it = order.find(dimension);
+    if (it != order.end())
+        for (const QString &u : it->second)
+            if (siFactor(u, dimension))
+                out << u;
     return out;
 }
 

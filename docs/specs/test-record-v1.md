@@ -88,7 +88,8 @@ can recognise a record by one file.
 - A reader refuses a major version it does not know and says so; it reads
   any minor version of a known major, ignoring fields it does not know.
 - Roles: `metadata`, `channel`, `source`, `frame-index`, `frame`, `field`,
-  `field-collection`, `results`, `analysis`.
+  `field-collection`, `results`, `analysis`, and `other` for a file the
+  user added outside these folders (section 7, rule 2).
 
 ## 4. Channels: `channels/<id>.csv`
 
@@ -100,6 +101,14 @@ One row per sample, in arrival order. Columns:
 | `t_host_s` | Host arrival time, seconds from `start.host_utc`. Always present. |
 | `raw` | Raw reading as the device delivered it (counts, steps, or the value of an imported file). |
 | `<quantity>_<unit>` | The calibrated value, e.g. `force_N`, `position_m`, `strain_1`. Empty when no calibration applies. |
+
+**Imported channels** (1.0 as written by release 0.1): a file imported
+from a machine's export has no host arrival times and usually no device
+clock TenForge can vouch for, so both time columns are empty, never
+invented; `start.host_utc` is `null`, and `timestamps` in test.json is
+`none`. The file itself is kept verbatim under `source/`, time column
+included. A channel whose source column is a strain (e.g. in %) is
+written as `channels/strain.csv` with a `strain_1` column.
 
 Each channel is described in `test.json` (section 5.4): quantity, unit,
 kind (measured or commanded), timestamp source, calibration used, and for
@@ -134,7 +143,8 @@ imported data the source file and column it came from.
 ### 5.2 `specimen.geometry`
 `shape` decides the fields: `rectangular` (width, thickness), `round`
 (diameter), `tube` (outer and inner diameter), `beam` (width, thickness,
-for flexure). Measured dimensions are quantities; repeated measurements
+for flexure), `given-area` (`area`, in m2, when only S0 is known, e.g.
+from a machine export's preamble). Measured dimensions are quantities; repeated measurements
 may be given as an array, and the profile states how they are combined.
 
 ### 5.3 `fixture`

@@ -1,0 +1,4 @@
+time_s,force_kN,load_cell_2_kN,extension_mm
+0,0,0,0
+0.1,1.0,1.1,0.01
+0.2,2.0,2.1,0.02
