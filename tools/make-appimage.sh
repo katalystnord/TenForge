@@ -16,6 +16,8 @@ set -eu
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 out=${1:-"$here/dist"}
+mkdir -p "$out"
+out=$(CDPATH= cd -- "$out" && pwd)   # absolute: the packaging runs from inside it
 build="$here/build-appimage"
 tools="$build/tools"
 
