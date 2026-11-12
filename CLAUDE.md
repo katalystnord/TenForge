@@ -123,7 +123,12 @@ tests/validation/  agreed values and the fetch script for data that may
                 not be committed (TENSTAND)
 docs/specs/     the file contracts: test record, profile, results
 docs/validation/  what each phase was validated against, with every number
-tools/          run-tests.sh, check-no-em-dashes.sh, sanitize.sh, git-hooks/
+docs/manual/    the user manual; images/ come from the walkthrough
+                (TF_WALKTHROUGH_SHOTS=<dir>)
+docs/release-notes/  one file per tag, used by the release workflow
+packaging/      desktop entry and icon
+tools/          run-tests.sh, check-no-em-dashes.sh, sanitize.sh, make-appimage.sh,
+                git-hooks/
 ```
 
 Driver plugins (`src/drivers/`) arrive in Phase 5, not before: no empty

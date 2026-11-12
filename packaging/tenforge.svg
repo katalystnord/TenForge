@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- TenForge's icon: a tensile curve, rising, yielding, and breaking. -->
+  <rect x="8" y="8" width="240" height="240" rx="40" fill="#1f3b57"/>
+  <path d="M48 208 L48 56 M48 208 L212 208" stroke="#8fa9c2" stroke-width="8" stroke-linecap="round" fill="none"/>
+  <path d="M52 204 L70 92 C 82 72, 120 64, 170 62 L 196 112 L 196 204"
+        stroke="#f2a33a" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="70" cy="92" r="11" fill="#ffffff"/>
+</svg>

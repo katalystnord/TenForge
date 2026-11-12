@@ -156,6 +156,13 @@ criteria met and verified by driving the real thing.
   save and open; AppImage; manual started.
 - Exit: walkthrough test opens a CSV and produces a report using only
   on-screen guidance; release 0.1.
+- **Status, 2026-11-12: built; release 0.1 waits on David.** The
+  walkthrough opens a CSV by following the banner, exports a PDF and an
+  HTML report, saves and reopens a record (main_window_walkthrough, with
+  its negative checks). The AppImage builds in CI (release workflow);
+  tagging v0.1.0 makes a draft release for David to publish. Not done in
+  this phase: series statistics in the window (the engine has them; the
+  series file format in results-v1 section 4 is still to be specified).
 
 ### Phase 3: Compression and bending analysis (M)
 

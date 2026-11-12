@@ -1,0 +1,98 @@
+name: release
+
+# The AppImage, built from a fresh clone and checked that it starts; kept
+# with every run, and attached to a DRAFT release when a version tag
+# (v0.1.0, ...) is pushed. What goes out under a version number is a
+# person's decision: the draft is published by hand. (Carried over from
+# SurView's release job, which uses the same tools and pins.)
+#
+# Built on ubuntu-26.04, the first runner image whose VTK is built against
+# Qt 6. An AppImage does not carry the C library, so this package needs a
+# distribution of about that vintage or newer; the release notes say so.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+  NEEDRESTART_MODE: a
+
+jobs:
+  appimage:
+    name: AppImage (x86_64)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # git describe needs history and tags for the build id
+
+      - name: Install dependencies
+        uses: ./.github/actions/apt-deps
+        timeout-minutes: 60
+        with:
+          cache-key: apt-tenforge-appimage-26.04
+          need-vtk-qt: 'true'
+          packages: >-
+            ninja-build cmake g++
+            qt6-base-dev qt6-base-dev-tools libgl1-mesa-dev
+            libeigen3-dev patchelf xvfb desktop-file-utils
+
+      - name: Build the AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1   # runners have no FUSE
+        run: tools/make-appimage.sh dist
+
+      # The packaged program, not the build tree, with a scrubbed
+      # environment so nothing from the build can be helping: it must say
+      # its version, and its window must come up on a bare X server and stay
+      # up (ended by the timeout, exit 124) with no missing library or plugin.
+      - name: Check that it runs
+        run: |
+          set -euo pipefail
+          image=$(ls "$PWD"/dist/TenForge-*-x86_64.AppImage)
+          echo "Built: $image ($(du -h "$image" | cut -f1))"
+          env -i HOME="$HOME" PATH=/usr/bin:/bin APPIMAGE_EXTRACT_AND_RUN=1 \
+            "$image" --version | tee version.txt
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            grep -q "^TenForge ${GITHUB_REF_NAME#v} " version.txt \
+              || { echo "the tag and the program's version differ"; exit 1; }
+          fi
+          set +e
+          # DISPLAY and XAUTHORITY are xvfb-run's, read inside its shell; a
+          # bare env -i would drop them and the window could never connect.
+          timeout 20 xvfb-run -a -s "-screen 0 1280x800x24" sh -c \
+            'exec env -i HOME="$HOME" PATH=/usr/bin:/bin DISPLAY="$DISPLAY" \
+               XAUTHORITY="$XAUTHORITY" APPIMAGE_EXTRACT_AND_RUN=1 \
+               LIBGL_ALWAYS_SOFTWARE=1 QT_QPA_PLATFORM=xcb "$0"' "$image" > run.log 2>&1
+          status=$?
+          set -e
+          cat run.log
+          [ "$status" -eq 124 ] || { echo "the window exited early (status $status)"; exit 1; }
+          if grep -Ei "could not (load|find)|cannot open shared object" run.log; then exit 1; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TenForge-AppImage-x86_64
+          path: dist/TenForge-*-x86_64.AppImage
+          if-no-files-found: error
+
+      - name: Attach it to a draft release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          notes=docs/release-notes/$tag.md
+          gh release create "$tag" dist/TenForge-*-x86_64.AppImage \
+            --draft --title "TenForge $tag" --notes-file "$notes" \
+            || gh release upload "$tag" dist/TenForge-*-x86_64.AppImage --clobber

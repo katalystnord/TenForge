@@ -74,3 +74,13 @@ vtk_module_autoinit(TARGETS TenForge MODULES ${VTK_LIBRARIES})
 # --- tf-analyse: the headless command line ----------------------------------
 add_executable(tf-analyse cli/main.cpp)
 target_link_libraries(tf-analyse PRIVATE tf_core)
+
+# --- Installation: the application, the command line, the desktop entry ----
+include(GNUInstallDirs)
+install(TARGETS TenForge tf-analyse RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/tenforge.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/tenforge.svg
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+install(FILES ${CMAKE_SOURCE_DIR}/LICENSE ${CMAKE_SOURCE_DIR}/NOTICE
+        DESTINATION ${CMAKE_INSTALL_DOCDIR})

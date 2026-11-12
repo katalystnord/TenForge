@@ -42,6 +42,8 @@
 #     titles, a real UX defect, fixed). Then broken on purpose, each red:
 #     chart left out of the HTML report; gauge length edits not read;
 #     conformity not stated; the unlisted-files button never shown.
+#   - gui_reports_its_version_without_a_display: the build id dropped from
+#     the output turned it red.
 #   NOT exercised: the chart's render-size assertion was not separately
 #   broken (no clean way to deny the widget a GL context in the test); it
 #   rests on VTK reporting zero size without one.
@@ -165,6 +167,12 @@ add_test(NAME cli_reports_its_version
          COMMAND tf-analyse --version)
 set_tests_properties(cli_reports_its_version PROPERTIES
     PASS_REGULAR_EXPRESSION "^tf-analyse ${PROJECT_VERSION}")
+
+# The window's program answers --version with no display (packaging needs it).
+add_test(NAME gui_reports_its_version_without_a_display COMMAND TenForge --version)
+set_tests_properties(gui_reports_its_version_without_a_display PROPERTIES
+    PASS_REGULAR_EXPRESSION "^TenForge ${PROJECT_VERSION} \\(build "
+    ENVIRONMENT "DISPLAY=;WAYLAND_DISPLAY=;QT_QPA_PLATFORM=")
 
 # The analysis from the command line, on a committed synthetic curve with a
 # known answer (Rp0.2 = 300 MPa exactly, Rm = 500 MPa).

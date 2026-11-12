@@ -3,12 +3,15 @@
 Open universal testing software: tension, compression and bending, for
 any universal testing machine.
 
-**Status: Phase 1, the tension analysis core.** `tf-analyse` analyses a
-testing machine's export from the command line with the ISO 6892-1
-(metals) or ISO 527-1 (plastics) profile, validated against NPL's
-TENSTAND dataset and BAM's S355 tests (see [Validation](#validation)). The
-first release with a window (0.1) follows in Phase 2; see
-[ROADMAP.md](ROADMAP.md).
+**Status: release 0.1, tensile tests from any machine's export.** Open a
+CSV, follow the bar at the top of the window, read the results with the
+curve, export a PDF or HTML report, save the test as an open record. The
+ISO 6892-1 (metals) and ISO 527-1 (plastics) analyses are validated
+against NPL's TENSTAND dataset and BAM's S355 tests (see
+[Validation](#validation)). The manual: [docs/manual/](docs/manual/).
+What comes next: [ROADMAP.md](ROADMAP.md).
+
+![TenForge with a tensile test analysed](docs/manual/images/analysed.png)
 
 ## What it is for
 
@@ -43,9 +46,22 @@ sudo apt install cmake ninja-build g++ qt6-base-dev qt6-base-dev-tools \
 cmake -S . -B build-ninja -G Ninja
 cmake --build build-ninja
 tools/run-tests.sh
+build-ninja/src/TenForge          # the window
+tools/make-appimage.sh            # dist/TenForge-<version>-x86_64.AppImage
 ```
 
+## Installing
+
+Download the AppImage from the Releases page (x86_64 Linux, built on
+Ubuntu 26.04 and needing a distribution about that new), `chmod +x` it
+and run it. Or build from source, below.
+
 ## Analysing a file
+
+In the window: **Open data...**, then do what the bar at the top says.
+The [manual](docs/manual/) walks through it.
+
+From the command line:
 
 ```bash
 tf-analyse --list-profiles
@@ -62,7 +78,7 @@ they are. Every result says how it was made, or why it could not be.
 **Every result is currently "aligned", not "to the standard".** The
 profiles' parameters are entered from public sources and stay marked
 unconfirmed until checked against the purchased standards, and calibration
-certificates can be recorded only from Phase 7. The results say so, with
+certificates can be recorded only from release 0.6. The results say so, with
 each reason.
 
 ## Validation

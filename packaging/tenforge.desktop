@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=TenForge
+GenericName=Mechanical testing analysis
+Comment=Open universal testing software: analyse tensile tests from any testing machine
+Exec=TenForge
+Icon=tenforge
+Terminal=false
+Categories=Science;Engineering;
+Keywords=tensile;tension;testing;materials;ISO 6892;ISO 527;
