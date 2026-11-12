@@ -26,6 +26,7 @@ endforeach()
 # --- tf_core: record, profiles, calibration, sequencer ----------------------
 add_library(tf_core STATIC
     core/ApplicationInfo.cpp
+    core/Import.cpp
 )
 target_include_directories(tf_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tf_core PUBLIC tf_analysis Qt6::Core)

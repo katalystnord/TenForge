@@ -1,0 +1,12 @@
+"Reference";"Example layout"
+"Identification";"TenForge test"
+"Cross-sectional area = So"
+"So";78.5;"mm2"
+"Le";50.000000;"mm"
+"N";4
+"time";"crosshead";"extensometer";"force"
+"s";"mm";"mm";"kN"
+0.00;0.010;0.0000;0.100
+0.02;0.020;0.0050;1.500
+0.04;0.030;0.0100;2.900
+0.06;0.040;0.0150;4.300

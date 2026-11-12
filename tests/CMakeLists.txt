@@ -58,6 +58,13 @@ target_compile_definitions(test_tension_synthetic PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME tension_on_synthetic_curves COMMAND test_tension_synthetic)
 
+# --- Reading machine exports (tf_core) ---------------------------------------
+add_executable(test_import test_import.cpp)
+target_link_libraries(test_import PRIVATE tf_core)
+target_compile_definitions(test_import PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME import_machine_exports COMMAND test_import)
+
 # --- The command line says what it is and what it cannot do yet -------------
 add_test(NAME cli_reports_its_version
          COMMAND tf-analyse --version)
