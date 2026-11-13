@@ -48,9 +48,10 @@ QString calculixPlastic(const Hardening &h, const Analysis &a, bool kinematic = 
 // A FreeCAD material card (YAML), or empty with why.
 QString freecadCard(const Analysis &a, const Specimen &s, QString *error);
 
-// The analysed curve as VTK XML PolyData, ASCII: one polyline, point
-// coordinates (strain %, stress MPa, 0) for a sensible view, and point
-// arrays in SI: strain, stress_Pa, force_N; the results as field data.
+// The analysed curve as VTK XML PolyData, ASCII: one polyline with point
+// coordinates (strain %, stress MPa, 0); point arrays in SI (strain,
+// stress_Pa, force_N) and for plotting (strain_percent, stress_MPa, for
+// ParaView's Line Chart View); the results as field data.
 QString curveVtp(const Analysis &a);
 
 // The test as JSON-LD for Platform MaterialDigital: PMD Core Ontology

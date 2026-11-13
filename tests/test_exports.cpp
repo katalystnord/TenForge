@@ -185,8 +185,17 @@ TF_CASE(the_curve_reads_back_in_vtk_with_its_arrays_and_results)
     vtkDataArray *force = pd->GetPointData()->GetArray("force_N");
     TF_REQUIRE(stress && force);
     const vtkIdType k = n / 2;
-    TF_NEAR(stress->GetTuple1(k), s.analysis()->stress[std::size_t(k)],
-            1e-9 * std::fabs(s.analysis()->stress[std::size_t(k)]));
+    // The SI data exactly as computed (written with 17 digits).
+    TF_CHECK(stress->GetTuple1(k) == s.analysis()->stress[std::size_t(k)]);
+    // Ready for a line chart, in the units a reader expects.
+    vtkDataArray *pct = pd->GetPointData()->GetArray("strain_percent");
+    vtkDataArray *mpa = pd->GetPointData()->GetArray("stress_MPa");
+    TF_REQUIRE(pct && mpa);
+    // Plotting arrays to 8 significant digits.
+    TF_NEAR(mpa->GetTuple1(k), s.analysis()->stress[std::size_t(k)] * 1e-6,
+            1e-7 * std::fabs(s.analysis()->stress[std::size_t(k)] * 1e-6));
+    TF_NEAR(pct->GetTuple1(k), s.analysis()->strain[std::size_t(k)] * 100.0,
+            1e-7 * std::fabs(s.analysis()->strain[std::size_t(k)] * 100.0));
     vtkDataArray *rm = pd->GetFieldData()->GetArray("Rm_Pa");
     TF_REQUIRE(rm != nullptr);
     TF_NEAR(rm->GetTuple1(0), 500e6, 1e3);

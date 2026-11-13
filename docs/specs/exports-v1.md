@@ -67,20 +67,35 @@ specimen id), `Author: TenForge <version>` and the conformity in
 ## 3. The analysed curve (`.vtp`, ParaView and PyVista)
 
 VTK XML PolyData, ASCII: one polyline through the analysed curve's
-samples (those with a finite strain and stress). Point coordinates are
-(strain in %, stress in MPa, 0), so the curve looks right when opened;
-the point arrays are SI: `strain` (1), `stress_Pa`, `force_N`. Each
-determined result is a field-data array named `<id>_<unit>` (e.g.
-`Rm_Pa`, `Agt_1`). An XML comment says where it came from.
+samples (those with a finite strain and stress). Point arrays: the SI data
+`strain` (1), `stress_Pa`, `force_N`, and the same for plotting,
+`strain_percent` and `stress_MPa`. **In ParaView, plot it in a Line Chart
+View** with X array `strain_percent` and Y `stress_MPa`: the 3D view
+scales both axes alike, so the curve (tens of % against hundreds of MPa)
+shows as a sliver. The point coordinates are (strain in %, stress in MPa,
+0). Each determined result is a field-data array named `<id>_<unit>`
+(e.g. `Rm_Pa`, `Agt_1`). An XML comment says where it came from and how to
+plot it. (Corrected 2026-11-13: the first draft said the coordinates
+alone made the curve look right when opened; opened in ParaView 6.1, the
+3D view squeezed it.)
 
 ## 4. Checked against the programs themselves
 
 - The `.vtp` is read back with VTK's XML reader (the one ParaView and
-  PyVista use) in the test suite.
+  PyVista use) in the test suite; ParaView 6.1.0's pvpython reads it with
+  every array and result, and plots it as a line chart.
 - Where FreeCAD's flatpak is installed, the suite loads the card into
   FreeCAD's material manager and solves FreeCAD's own nonlinear example
   (plate with hole) with CalculiX using the yield points
   (`freecad_loads_the_card_and_calculix_runs_the_yield_points`).
+
+- ParaView reads whole records with TenForge's reader plugin
+  (`tools/paraview/TenForgeRecordReader.py`, plain Python): it opens
+  `manifest.tfrec`, checks `results/curve.vtp` against the manifest's
+  SHA-256 and refuses it if changed, and outputs the curve with the
+  specimen, mode, procedure and conformity as field data. Where ParaView's
+  flatpak is installed, the suite opens a record with it and has a changed
+  copy refused (`paraview_opens_a_record_and_refuses_a_changed_one`).
 
 ## 5. Reference curves in (PlotTracer)
 

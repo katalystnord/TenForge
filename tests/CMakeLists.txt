@@ -310,6 +310,32 @@ else()
                    "CalculiX export check is not run")
 endif()
 
+# --- ParaView reads records with TenForge's plugin (Phase 4 exit) ----------
+# Only where ParaView's flatpak and xvfb-run are installed (not in CI).
+find_program(TF_XVFB_RUN xvfb-run)   # also found below; cached either way
+set(tf_have_paraview FALSE)
+if(TF_FLATPAK AND TF_XVFB_RUN)
+    execute_process(COMMAND ${TF_FLATPAK} info org.paraview.ParaView
+                    RESULT_VARIABLE tf_pv_rc OUTPUT_QUIET ERROR_QUIET)
+    if(tf_pv_rc EQUAL 0)
+        set(tf_have_paraview TRUE)
+    endif()
+endif()
+if(tf_have_paraview)
+    add_test(NAME paraview_opens_a_record_and_refuses_a_changed_one
+             COMMAND ${CMAKE_COMMAND}
+                     -DTF_ANALYSE=$<TARGET_FILE:tf-analyse>
+                     -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/synthetic/discontinuous.csv
+                     -DSCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/paraview/check_record_reader.py
+                     -DPLUGIN=${CMAKE_SOURCE_DIR}/tools/paraview/TenForgeRecordReader.py
+                     -DWORK=${CMAKE_BINARY_DIR}/paraview-check
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/paraview/run_check.cmake)
+    set_tests_properties(paraview_opens_a_record_and_refuses_a_changed_one PROPERTIES TIMEOUT 300)
+else()
+    message(STATUS "ParaView (flatpak org.paraview.ParaView) or xvfb-run not found: the "
+                   "ParaView record check is not run")
+endif()
+
 # --- The command line says what it is and what it cannot do yet -------------
 add_test(NAME cli_reports_its_version
          COMMAND tf-analyse --version)
@@ -343,6 +369,21 @@ add_test(NAME cli_writes_results_json_to_standard_output
                  --gauge-length "75 mm" --json - ${TF_SYN}/polymer.csv)
 set_tests_properties(cli_writes_results_json_to_standard_output PROPERTIES
     PASS_REGULAR_EXPRESSION "\"format\": \"tenforge-results\".*\"id\": \"Et\"")
+
+# tf-analyse --record writes a record a reader can open: its manifest lists
+# the curve ParaView reads (checked in ParaView itself where it is installed).
+add_test(NAME cli_saves_a_record
+         COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_BINARY_DIR}/cli-record)
+add_test(NAME cli_saves_a_record_with_its_curve
+         COMMAND tf-analyse --profile iso-6892-1-2019 --area "78.54 mm2" --gauge-length "50 mm"
+                 --record ${CMAKE_BINARY_DIR}/cli-record ${TF_SYN}/ro-continuous.csv)
+add_test(NAME cli_record_manifest_lists_the_curve
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_BINARY_DIR}/cli-record/manifest.tfrec)
+set_tests_properties(cli_saves_a_record PROPERTIES FIXTURES_SETUP cli_record_clean)
+set_tests_properties(cli_saves_a_record_with_its_curve PROPERTIES
+    FIXTURES_REQUIRED cli_record_clean FIXTURES_SETUP cli_record)
+set_tests_properties(cli_record_manifest_lists_the_curve PROPERTIES
+    FIXTURES_REQUIRED cli_record PASS_REGULAR_EXPRESSION "results/curve\\.vtp")
 
 # PASS_REGULAR_EXPRESSION ignores the exit code, so each refusal is checked
 # twice: once for what it says, once (WILL_FAIL) that it exits non-zero.

@@ -92,11 +92,12 @@ int main(int argc, char *argv[])
     const QCommandLineOption jsonOpt("json", "Write results.json here (\"-\" for standard output).", "path");
     const QCommandLineOption csvOpt("csv", "Write results.csv here (\"-\" for standard output).", "path");
     const QCommandLineOption freecadOpt("freecad", "Tension: write a FreeCAD material card <name>.FCMat, FEM yield points <name>-yieldpoints.txt and a CalculiX block <name>-plastic.inp (true stress against true plastic strain, yield to Rm).", "name");
+    const QCommandLineOption recordOpt("record", "Save the test as a record in this new or empty folder.", "folder");
     const QCommandLineOption pmdOpt("pmd", "Tension: write the test as JSON-LD for Platform MaterialDigital (PMDco 3.1.2, TTO 3.0.0).", "path");
     const QCommandLineOption vtpOpt("vtp", "Write the analysed curve as VTK XML PolyData (.vtp), for ParaView and PyVista.", "path");
     parser.addOptions({profileOpt, listOpt, forceOpt, extOpt, forceUnitOpt, extUnitOpt, areaOpt,
                        gaugeOpt, widthOpt, thicknessOpt, spanOpt, loadingSpanOpt, deflectionAtOpt,
-                       complianceOpt, jsonOpt, csvOpt, freecadOpt, vtpOpt, pmdOpt});
+                       complianceOpt, jsonOpt, csvOpt, freecadOpt, vtpOpt, pmdOpt, recordOpt});
     parser.process(app);
 
     if (parser.isSet(listOpt)) {
@@ -217,6 +218,9 @@ int main(int argc, char *argv[])
             err() << "tf-analyse: card written; no hardening curve: " << h.error << "\n";
         }
     }
+    if (parser.isSet(recordOpt))
+        if (const QString e = session.saveRecord(parser.value(recordOpt)); !e.isEmpty())
+            return refuse("no record: " + e);
     if (parser.isSet(pmdOpt)) {
         QString error;
         const QString ld = tf::core::pmdJsonLd(*session.analysis(), session.specimen, &error);

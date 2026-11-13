@@ -277,16 +277,20 @@ QString curveVtp(const Analysis &a)
             keep.push_back(i);
     const auto &F = a.imported.input.force;
 
-    auto array = [&](const QString &name, auto value) {
+    // The SI data at full precision (17 digits round-trip a double); the
+    // plotting arrays at 8, which is more than a chart can show.
+    auto array = [&](const QString &name, auto value, int digits = 17) {
         QString s = "        <DataArray type=\"Float64\" Name=\"" + name + "\" format=\"ascii\">\n          ";
         for (std::size_t i : keep)
-            s += num(value(i)) + " ";
+            s += QString::number(value(i), 'g', digits) + " ";
         return s + "\n        </DataArray>\n";
     };
     QString x = "<?xml version=\"1.0\"?>\n";
     x += "<!-- TenForge " + applicationVersion() + ": the analysed curve of " + source(a).toHtmlEscaped()
          + ", analysed with " + a.profile.id.toHtmlEscaped() + " " + a.profile.profileVersion.toHtmlEscaped()
-         + ". Points are (strain %, stress MPa, 0) for viewing; the arrays are SI. "
+         + ". Plot it in a Line Chart View, X array strain_percent, Y stress_MPa (the 3D "
+           "view scales both axes alike and squeezes the curve). Points are (strain %, "
+           "stress MPa, 0); strain, stress_Pa and force_N are the SI data. "
            "Derived; the test record is the record. -->\n";
     x += "<VTKFile type=\"PolyData\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">\n";
     x += "  <PolyData>\n    <FieldData>\n";
@@ -312,6 +316,10 @@ QString curveVtp(const Analysis &a)
     x += array("strain", [&](std::size_t i) { return a.strain[i]; });
     x += array("stress_Pa", [&](std::size_t i) { return a.stress[i]; });
     x += array("force_N", [&](std::size_t i) { return i < F.size() ? F[i] : NAN; });
+    // Ready to plot in ParaView's Line Chart View (X array strain_percent),
+    // without calculator steps; the SI arrays above are the data.
+    x += array("strain_percent", [&](std::size_t i) { return a.strain[i] * 100.0; }, 8);
+    x += array("stress_MPa", [&](std::size_t i) { return a.stress[i] * 1e-6; }, 8);
     x += "      </PointData>\n";
     x += "      <Lines>\n        <DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">\n          ";
     for (std::size_t k = 0; k < keep.size(); ++k)

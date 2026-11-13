@@ -290,6 +290,15 @@ falls. It comes from tension tests only.
 results travel with it. Every saved record also holds its curve as
 `results/curve.vtp`.
 
+**In ParaView** (6.1 checked): open the `.vtp`, then show it in a **Line
+Chart View** with X array `strain_percent` and Y `stress_MPa`. The 3D view
+scales both axes alike and squeezes the curve to a sliver. To open whole
+records, load TenForge's reader once (Tools > Manage Plugins > Load New,
+choose `tools/paraview/TenForgeRecordReader.py` from TenForge's sources,
+tick Auto Load); then File > Open a record's `manifest.tfrec` gives its
+curve with the specimen, procedure and conformity. Like TenForge, the
+reader refuses a record whose curve changed after it was written.
+
 **File > Export for Platform MaterialDigital (JSON-LD)...** writes the
 tensile test as linked data in the PMD Core Ontology and Tensile Test
 Ontology, for PMD's knowledge graphs.
@@ -320,7 +329,7 @@ tf-analyse --profile iso-604-2002 --width "10 mm" --thickness "4 mm" \
 ```
 
 `--freecad <name>`, `--vtp <file>` and `--pmd <file>` write the exports
-above.
+above; `--record <folder>` saves the test as a record.
 
 When something is missing, tf-analyse says what, in the window's words,
 with the option that supplies it.

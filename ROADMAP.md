@@ -208,9 +208,11 @@ criteria met and verified by driving the real thing.
   CalculiX solves FreeCAD's own nonlinear example on the yield points (an
   automatic test where FreeCAD's flatpak is installed); PyVista 0.49 (VTK
   9.7) reads the curve and its results; the JSON-LD names only terms of
-  the released ontologies. Open: ParaView 6.x by hand (not installed
-  yet), a ParaView reader for whole records, the record as `.pvd`/`.vtu`
-  (waits for DIC fields, Phase 6).
+  the released ontologies; ParaView 6.1.0 reads the curve (line chart)
+  and opens whole records with TenForge's reader plugin, refusing a
+  changed one (automatic test where ParaView's flatpak is installed).
+  Open: David opening the exports in ParaView by hand; the record as
+  `.pvd`/`.vtu` moves to Phase 6, when there are DIC fields to hold.
 
 ### Planned, place in the order to be decided: series and materials
 
