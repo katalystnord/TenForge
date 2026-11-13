@@ -16,6 +16,7 @@
 #include <QSaveFile>
 
 #include <cmath>
+#include <map>
 
 namespace tf::core {
 
@@ -188,7 +189,8 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
                     const Specimen &specimen, const Profile &profile, QJsonObject results,
                     const Fixture &fixture, const QString &compliancePath,
                     const std::optional<std::pair<double, double>> &modulusWindow,
-                    const std::vector<CurveNote> &curveNotes)
+                    const std::vector<CurveNote> &curveNotes,
+                    const std::vector<ReferenceCurve> &references)
 {
     if (QDir(dir).exists() && !QDir(dir).isEmpty(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden))
         return dir + " already holds files; a record is only written into a new or empty folder";
@@ -291,6 +293,34 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
                                            {"on", "strain as plotted"}}}};
     if (!curveNotes.empty())
         test["curve_notes"] = curveNotesJson(curveNotes);
+    if (!references.empty()) {
+        // Each reference file kept byte for byte, once however many curves
+        // come from it.
+        QJsonArray refs;
+        std::map<QByteArray, QString> kept;
+        for (const ReferenceCurve &r : references) {
+            QString rel = kept.count(r.sha256) ? kept[r.sha256] : QString();
+            if (rel.isEmpty()) {
+                QFile rf(r.file);
+                if (!rf.open(QIODevice::ReadOnly))
+                    return "cannot read the reference curve file " + r.file;
+                const QByteArray bytes = rf.readAll();
+                if (sha256Hex(bytes) != r.sha256)
+                    return r.file + " has changed since the reference curve was read from it";
+                rel = QString("source/reference-%1-%2").arg(kept.size() + 1).arg(QFileInfo(r.file).fileName());
+                w.write(rel, bytes, {{"role", "reference"}});
+                kept[r.sha256] = rel;
+            }
+            refs.append(QJsonObject{{"file", rel},
+                                    {"sha256", QString::fromLatin1(r.sha256)},
+                                    {"series", r.series},
+                                    {"strain_column", r.strainColumn},
+                                    {"strain_unit", r.strainUnit},
+                                    {"stress_column", r.stressColumn},
+                                    {"stress_unit", r.stressUnit}});
+        }
+        test["reference_curves"] = refs;
+    }
     if (!complianceRel.isEmpty())
         test["compliance"] = QJsonObject{{"file", complianceRel}, {"sha256", w.shaOf(complianceRel)}};
     w.write("test.json", jsonBytes(test), {{"role", "metadata"}});
@@ -393,6 +423,18 @@ OpenedRecord openRecord(const QString &dirIn)
             return r;
         }
         r.curveNotes = *notes;
+        for (const QJsonValue &v : test.value("reference_curves").toArray()) {
+            const QJsonObject o = v.toObject();
+            ReferenceCurve rc;
+            rc.file = o.value("file").toString();
+            rc.sha256 = o.value("sha256").toString().toLatin1();
+            rc.series = o.value("series").toString();
+            rc.strainColumn = o.value("strain_column").toString();
+            rc.strainUnit = o.value("strain_unit").toString();
+            rc.stressColumn = o.value("stress_column").toString();
+            rc.stressUnit = o.value("stress_unit").toString();
+            r.references.push_back(rc);
+        }
     }
     const auto spec = specimenFromJson(test.value("specimen").toObject(), &err);
     if (!spec) {

@@ -4,6 +4,7 @@
 #include "core/Record.h"
 #include "core/Report.h"
 #include "core/Annotations.h"
+#include "core/Exports.h"
 #include "gui/AnnotatedChart.h"
 #include "gui/ChartExport.h"
 
@@ -11,6 +12,8 @@
 #include <QApplication>
 #include <QBuffer>
 #include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
@@ -115,6 +118,18 @@ MainWindow::MainWindow(QWidget *parent)
     m_exportReport = file->addAction(tr("&Export report..."), this, &MainWindow::exportReport);
     m_exportReport->setShortcut(QKeySequence(tr("Ctrl+E")));
     m_exportChart = file->addAction(tr("Export &chart..."), this, &MainWindow::exportChart);
+    m_exportFreecad = file->addAction(tr("Export for &FreeCAD and CalculiX..."), this,
+                                      &MainWindow::exportFreecad);
+    m_exportVtp = file->addAction(tr("Export curve for &ParaView..."), this, &MainWindow::exportVtp);
+    m_exportPmd = file->addAction(tr("Export for Platform &MaterialDigital (JSON-LD)..."), this,
+                                  &MainWindow::exportPmd);
+    file->addSeparator();
+    m_addReference = file->addAction(tr("Add reference curve (PlotTracer)..."), this,
+                                     &MainWindow::addReference);
+    m_clearReferences = file->addAction(tr("Remove reference curves"), this, [this] {
+        m_session.references.clear();
+        refresh();
+    });
     file->addSeparator();
     file->addAction(tr("&Quit"), QKeySequence::Quit, qApp, &QApplication::quit);
     QMenu *help = menuBar()->addMenu(tr("&Help"));
@@ -661,6 +676,10 @@ void MainWindow::refresh()
     m_saveRecord->setEnabled(m_session.analysis().has_value());
     m_exportReport->setEnabled(m_session.analysis().has_value());
     m_exportChart->setEnabled(m_session.analysis().has_value());
+    m_exportFreecad->setEnabled(m_session.analysis().has_value());
+    m_exportVtp->setEnabled(m_session.analysis().has_value());
+    m_exportPmd->setEnabled(m_session.analysis().has_value());
+    m_clearReferences->setEnabled(!m_session.references.empty());
     m_windowRow->setVisible(m_session.analysis().has_value());
     m_tabs->setVisible(m_session.analysis().has_value());
     showResults();
@@ -792,6 +811,30 @@ void MainWindow::showChart()
         line->SetWidth(1.5);
         line->SetLabel("Curve");
 
+        // Reference curves (from PlotTracer): dashed, named, never analysed.
+        const unsigned char refColour[3][3] = {{120, 60, 160}, {30, 130, 110}, {160, 110, 20}};
+        for (std::size_t k = 0; k < m_session.references.size(); ++k) {
+            const tf::core::ReferenceCurve &r = m_session.references[k];
+            vtkNew<vtkTable> rt;
+            vtkNew<vtkDoubleArray> rx, ry;
+            rx->SetName("x");
+            const std::string label = (r.series + tr(" (reference)")).toStdString();
+            ry->SetName(label.c_str());
+            for (std::size_t i = 0; i < r.strain.size(); ++i) {
+                rx->InsertNextValue(r.strain[i] * 100.0);
+                ry->InsertNextValue(r.stress[i] * 1e-6);
+            }
+            rt->AddColumn(rx);
+            rt->AddColumn(ry);
+            vtkPlot *rp = m_chartXY->AddPlot(vtkChart::LINE);
+            rp->SetInputData(rt, 0, 1);
+            const auto &c = refColour[k % 3];
+            rp->SetColor(c[0], c[1], c[2], 255);
+            rp->SetWidth(1.5);
+            rp->GetPen()->SetLineType(vtkPen::DASH_DOT_LINE);
+            rp->SetLabel(label);
+        }
+
         // The modulus line, from zero stress to near the top of the curve.
         for (const auto &pr : a->profile.results) {
             if (pr.primitive != "linear-fit" && pr.primitive != "max-slope")
@@ -822,6 +865,7 @@ void MainWindow::showChart()
         }
 
         // Each stress result where the engine found it on the curve.
+        int markerIndex = 0;
         for (const auto &pr : a->profile.results) {
             const auto it = a->result.results.find(pr.key.toStdString());
             if (it == a->result.results.end() || !it->second.determined || it->second.unit != "Pa"
@@ -837,6 +881,14 @@ void MainWindow::showChart()
             pt->AddColumn(py);
             auto *p = vtkPlotPoints::SafeDownCast(m_chartXY->AddPlot(vtkChart::POINTS));
             p->SetInputData(pt, 0, 1);
+            // Fixed colours, in result order: a figure's colours must not
+            // depend on what else is drawn (a reference curve shifted VTK's
+            // automatic cycle).
+            static const unsigned char marker[6][3] = {{230, 120, 0},   {160, 70, 40},
+                                                       {200, 40, 40},   {40, 120, 200},
+                                                       {110, 70, 170},  {60, 140, 60}};
+            const auto &mc = marker[markerIndex++ % 6];
+            p->SetColor(mc[0], mc[1], mc[2], 255);
             p->SetMarkerStyle(vtkPlotPoints::CIRCLE);
             p->SetMarkerSize(9);
             p->SetLabel(pr.id.toStdString());
@@ -1093,6 +1145,180 @@ void MainWindow::exportChart()
         return;
     }
     statusBar()->showMessage(tr("Chart written to %1").arg(path));
+}
+
+void MainWindow::exportFreecad()
+{
+    const auto &a = m_session.analysis();
+    if (!a)
+        return;
+    // Bending and the rest are refused with the reason, on screen.
+    QString error;
+    const QString card = tf::core::freecadCard(*a, m_session.specimen, &error);
+    const tf::core::Hardening h = tf::core::hardeningCurve(*a);
+    if (card.isEmpty()) {
+        m_notices->setText(tr("Nothing to export for FreeCAD: %1.").arg(error));
+        m_notices->setVisible(true);
+        return;
+    }
+    const QString base = m_session.specimen.material.isEmpty()
+                             ? (m_session.specimen.id.isEmpty() ? QStringLiteral("material")
+                                                                : m_session.specimen.id)
+                             : m_session.specimen.material;
+    QString path = chooseFile(true, tr("Export for FreeCAD and CalculiX"),
+                              tr("FreeCAD material card (*.FCMat)"), base + ".FCMat");
+    if (path.isEmpty())
+        return;
+    if (path.endsWith(".FCMat", Qt::CaseInsensitive))
+        path.chop(6);
+    QStringList written, problems;
+    auto write = [&](const QString &p, const QByteArray &bytes) {
+        QFile f(p);
+        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate) && f.write(bytes) == bytes.size())
+            written << QFileInfo(p).fileName();
+        else
+            problems << tr("cannot write %1").arg(p);
+    };
+    write(path + ".FCMat", card.toUtf8());
+    if (h.error.isEmpty()) {
+        write(path + "-yieldpoints.txt", (tf::core::yieldPoints(h).join('\n') + '\n').toUtf8());
+        write(path + "-plastic.inp", tf::core::calculixPlastic(h, *a).toUtf8());
+    } else {
+        problems << tr("no hardening curve: %1").arg(h.error);
+    }
+    if (!problems.isEmpty()) {
+        m_notices->setText(tr("Written: %1. Not written: %2.")
+                               .arg(written.isEmpty() ? tr("nothing") : written.join(", "),
+                                    problems.join("; ")));
+        m_notices->setVisible(true);
+    }
+    statusBar()->showMessage(tr("Written for FreeCAD and CalculiX: %1").arg(written.join(", ")));
+}
+
+void MainWindow::exportVtp()
+{
+    const auto &a = m_session.analysis();
+    if (!a)
+        return;
+    const QString base = m_session.specimen.id.isEmpty() ? QStringLiteral("curve")
+                                                         : m_session.specimen.id;
+    QString path = chooseFile(true, tr("Export the curve for ParaView"),
+                              tr("VTK PolyData (*.vtp)"), base + ".vtp");
+    if (path.isEmpty())
+        return;
+    if (!path.endsWith(".vtp", Qt::CaseInsensitive))
+        path += ".vtp";
+    QFile f(path);
+    const QByteArray bytes = tf::core::curveVtp(*a).toUtf8();
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate) || f.write(bytes) != bytes.size()) {
+        m_notices->setText(tr("The curve was not exported: cannot write %1").arg(path));
+        m_notices->setVisible(true);
+        return;
+    }
+    statusBar()->showMessage(tr("Curve written to %1").arg(path));
+}
+
+void MainWindow::exportPmd()
+{
+    const auto &a = m_session.analysis();
+    if (!a)
+        return;
+    QString error;
+    const QString ld = tf::core::pmdJsonLd(*a, m_session.specimen, &error);
+    if (ld.isEmpty()) {
+        m_notices->setText(tr("Nothing to export for Platform MaterialDigital: %1.").arg(error));
+        m_notices->setVisible(true);
+        return;
+    }
+    const QString base = m_session.specimen.id.isEmpty() ? QStringLiteral("test")
+                                                         : m_session.specimen.id;
+    QString path = chooseFile(true, tr("Export for Platform MaterialDigital"),
+                              tr("JSON-LD (*.jsonld)"), base + ".jsonld");
+    if (path.isEmpty())
+        return;
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate) || f.write(ld.toUtf8()) != ld.toUtf8().size()) {
+        m_notices->setText(tr("The JSON-LD was not written: cannot write %1").arg(path));
+        m_notices->setVisible(true);
+        return;
+    }
+    statusBar()->showMessage(tr("JSON-LD written to %1").arg(path));
+}
+
+void MainWindow::addReference()
+{
+    const QString path = chooseFile(false, tr("Add a reference curve"),
+                                    tr("PlotTracer JSON export (*.json);;All files (*)"), {});
+    if (path.isEmpty())
+        return;
+    QString error;
+    const auto file = tf::core::readPlotTracer(path, &error);
+    if (!file) {
+        m_notices->setText(tr("%1 cannot be used: %2").arg(QFileInfo(path).fileName(), error));
+        m_notices->setVisible(true);
+        return;
+    }
+    // Which curve, which columns are strain and stress, in which units:
+    // PlotTracer records labels but no units, so the user says; TenForge's
+    // guess from the labels is filled in.
+    QDialog dlg(this);
+    dlg.setObjectName(QStringLiteral("referenceDialog"));
+    dlg.setWindowTitle(tr("Reference curve from %1").arg(QFileInfo(path).fileName()));
+    auto *form = new QFormLayout(&dlg);
+    auto *series = new QComboBox;
+    auto *strainCol = new QComboBox, *stressCol = new QComboBox;
+    auto *strainUnit = new QComboBox, *stressUnit = new QComboBox;
+    for (const auto &s : file->series)
+        if (s.relation.isEmpty())
+            series->addItem(s.name);
+    strainUnit->addItems(tf::core::referenceStrainUnits());
+    stressUnit->addItems(tf::core::referenceStressUnits());
+    form->addRow(tr("Curve"), series);
+    form->addRow(tr("Strain column"), strainCol);
+    form->addRow(tr("Strain unit"), strainUnit);
+    form->addRow(tr("Stress column"), stressCol);
+    form->addRow(tr("Stress unit"), stressUnit);
+    auto fill = [&] {
+        for (const auto &s : file->series) {
+            if (s.name != series->currentText())
+                continue;
+            for (QComboBox *c : {strainCol, stressCol}) {
+                c->clear();
+                c->addItems(s.columns);
+            }
+            const auto g = tf::core::guessReferenceColumns(s);
+            if (!g.strainColumn.isEmpty())
+                strainCol->setCurrentText(g.strainColumn);
+            if (!g.stressColumn.isEmpty())
+                stressCol->setCurrentText(g.stressColumn);
+            if (!g.strainUnit.isEmpty())
+                strainUnit->setCurrentText(g.strainUnit);
+            if (!g.stressUnit.isEmpty())
+                stressUnit->setCurrentText(g.stressUnit);
+        }
+    };
+    fill();
+    connect(series, &QComboBox::currentTextChanged, &dlg, fill);
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    form->addRow(buttons);
+    if (series->count() == 0) {
+        m_notices->setText(tr("%1 holds no curve, only error bars.").arg(QFileInfo(path).fileName()));
+        m_notices->setVisible(true);
+        return;
+    }
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+    error = m_session.addReferenceCurve(path, series->currentText(), strainCol->currentText(),
+                                        strainUnit->currentText(), stressCol->currentText(),
+                                        stressUnit->currentText());
+    if (!error.isEmpty()) {
+        m_notices->setText(tr("The reference curve was not added: %1").arg(error));
+        m_notices->setVisible(true);
+        return;
+    }
+    refresh();
 }
 
 void MainWindow::chooseCompliance()

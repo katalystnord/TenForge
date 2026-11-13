@@ -301,3 +301,8 @@ chooses. They are views of the record, not part of it.
   with `to` (a note over a span). Strains as for `analysis_choices`. Never
   used by the analysis. A record is still written once: notes changed on
   an opened record are saved by saving a new record.
+- **`reference_curves`** (optional): curves from elsewhere drawn beside
+  this one, each `{"file": "source/reference-1-<name>", "sha256", "series",
+  "strain_column", "strain_unit", "stress_column", "stress_unit"}`; the file
+  (a PlotTracer JSON export) is kept byte for byte with role `reference`,
+  once however many curves come from it. Never used by the analysis.

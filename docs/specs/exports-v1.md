@@ -81,3 +81,64 @@ determined result is a field-data array named `<id>_<unit>` (e.g.
   FreeCAD's material manager and solves FreeCAD's own nonlinear example
   (plate with hole) with CalculiX using the yield points
   (`freecad_loads_the_card_and_calculix_runs_the_yield_points`).
+
+## 5. Reference curves in (PlotTracer)
+
+Not an export but its mirror: a curve from elsewhere (a figure in a paper,
+digitised with PlotTracer) drawn beside the test's own, dashed, named
+"<series> (reference)". Read from PlotTracer's JSON export
+(`{"series": [{"name", "points": [{<axis label>: value}], "relation"?}]}`):
+
+- PlotTracer records axis labels but no units, so the user says which
+  column is strain and which is stress, and their units (strain: %, 1;
+  stress: MPa, N/mm2, GPa, kPa, Pa). TenForge proposes them from the labels.
+- A point missing either value is left out: a gap is not a zero.
+- An error-bar series (with `relation`) is not offered as a curve.
+- Never used by the analysis. Named in results.json (`reference_curves`)
+  and in the report's provenance, with the file and its SHA-256.
+- A record keeps each file byte for byte (test-record-v1, section 10).
+
+The importer's fixture was written by PlotTracer's own exporter
+(`tools/fixtures/make_plottracer_export.test.ts`).
+
+## 6. Platform MaterialDigital (JSON-LD)
+
+The test as linked data for PMD: **PMD Core Ontology 3.1.2** and the
+**Tensile Test Ontology (TTO) 3.0.0** (both CC BY 4.0), with PMDco's
+measurement pattern: the tensile testing process (`pmd:PMD_0000974`) has
+the test piece (`pmd:PMD_0020193`, evaluant role) as input and one
+measurement datum (`obo:IAO_0000109`) per value as output; each datum is a
+measurement of a quality or characteristic of the test piece and carries a
+scalar value specification (`obo:OBI_0001931`) with the number
+(`obo:OBI_0001937`) and a QUDT unit (`obo:IAO_0000039`). The process
+realizes a plan concretizing the test method (`tto:TTO_0000054`), labelled
+with the standard.
+
+| TenForge | Class | Unit |
+|---|---|---|
+| S0 | `tto:TTO_0000026` | `unit:MilliM2` |
+| gauge length | `pmd:PMD_0060016` | `unit:MilliM` |
+| E | `pmd:PMD_0000618` | `unit:GigaPA` |
+| Rp0.2 | `tto:TTO_0000047` | `unit:MegaPA` |
+| ReH, ReL | `pmd:PMD_0080173`, `pmd:PMD_0080172` | `unit:MegaPA` |
+| Rm | `tto:TTO_0000053` | `unit:MegaPA` |
+| Fm | `tto:TTO_0000023` | `unit:N` |
+| A, Agt, Ag | `pmd:PMD_0060004`, `tto:TTO_0000040`, `tto:TTO_0000037` | `unit:PERCENT` |
+
+Where TTO's unreleased main branch deprecates a TTO 3.0.0 term in favour
+of a PMDco 3.1.2 one (ReH, ReL, A, the gauge length), the PMDco term is
+used, so the file stays valid when TTO next releases. Results with no
+class in either (At, proof strengths other than Rp0.2) are named in the
+process's `rdfs:comment`, never forced onto a wrong class; so are the
+provenance and the conformity. Tension only: PMD has process classes for
+compression and bending but no ontology of their results.
+
+Two choices are TenForge's and not taken from a PMD example: the
+strengths and the modulus are characteristics of the test piece
+(`obo:RO_0000053`), S0 and the gauge length its qualities
+(`obo:RO_0000086`); PMD's own S355 example puts strengths on the material
+as qualities, and also uses IRIs that are not in PMDco 3.1.2 or that do
+not resolve (`unit:MegaPa`), so it was not copied. Not yet checked
+against PMDco's SHACL shapes. The suite checks every class and property
+written against the released ontology files
+(`pmd_jsonld_uses_only_terms_of_the_released_ontologies`).

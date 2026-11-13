@@ -53,4 +53,10 @@ QString freecadCard(const Analysis &a, const Specimen &s, QString *error);
 // arrays in SI: strain, stress_Pa, force_N; the results as field data.
 QString curveVtp(const Analysis &a);
 
+// The test as JSON-LD for Platform MaterialDigital: PMD Core Ontology
+// (PMDco 3.1.2) and the Tensile Test Ontology (TTO 3.0.0), measurement
+// pattern of PMDco, units from QUDT. Tension only (PMD has no ontology for
+// compression or bending results); empty with why otherwise.
+QString pmdJsonLd(const Analysis &a, const Specimen &s, QString *error);
+
 } // namespace tf::core

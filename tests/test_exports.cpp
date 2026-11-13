@@ -192,4 +192,52 @@ TF_CASE(the_curve_reads_back_in_vtk_with_its_arrays_and_results)
     TF_NEAR(rm->GetTuple1(0), 500e6, 1e3);
 }
 
+TF_CASE(the_pmd_json_ld_carries_each_result_with_its_class_and_unit)
+{
+    const Session s = tension();
+    QString err;
+    const QString text = pmdJsonLd(*s.analysis(), s.specimen, &err);
+    TF_REQUIRE(err.isEmpty());
+    const QJsonObject doc = QJsonDocument::fromJson(text.toUtf8()).object();
+    TF_CHECK(doc.value("@context").toObject().value("tto").toString() == "https://w3id.org/pmd/tto/");
+    // Index the graph by type.
+    QJsonObject rm, rmDatum, process;
+    for (const QJsonValue &v : doc.value("@graph").toArray()) {
+        const QJsonObject o = v.toObject();
+        if (o.value("@type").toString() == "pmd:PMD_0000974")
+            process = o;
+        if (o.value("@type").toString() == "tto:TTO_0000053")
+            rm = o;
+    }
+    TF_REQUIRE(!process.isEmpty() && !rm.isEmpty());
+    for (const QJsonValue &v : doc.value("@graph").toArray()) {
+        const QJsonObject o = v.toObject();
+        if (o.value("obo:IAO_0000221").toObject().value("@id") == rm.value("@id"))
+            rmDatum = o;
+    }
+    TF_REQUIRE(!rmDatum.isEmpty());
+    const QJsonObject spec = rmDatum.value("obo:OBI_0001938").toObject();
+    TF_NEAR(spec.value("obo:OBI_0001937").toObject().value("@value").toDouble(), 500.0, 1e-3);
+    TF_CHECK(spec.value("obo:IAO_0000039").toObject().value("@id").toString() == "unit:MegaPA");
+    TF_CHECK(process.value("rdfs:comment").toString().contains("not to the standard"));
+    // The QUDT IRIs PMD's own example gets wrong (they do not resolve).
+    TF_CHECK(!text.contains("unit:MegaPa\"") && !text.contains("unit:GigaPa\""));
+    // Rp0.1 is not in the profile; At has no class: named as left out.
+    TF_CHECK(process.value("rdfs:comment").toString().contains("At"));
+}
+
+TF_CASE(compression_and_bending_are_not_exported_to_pmd_and_say_why)
+{
+    Session s;
+    s.profile = "iso-178-2019";
+    s.openData(fixture("modes/beam-3pt.csv"));
+    s.specimen.width = 10.2e-3;
+    s.specimen.thickness = 4.1e-3;
+    s.fixture.span = 64e-3;
+    TF_REQUIRE(s.analyse());
+    QString err;
+    TF_CHECK(pmdJsonLd(*s.analysis(), s.specimen, &err).isEmpty());
+    TF_CHECK(err.contains("tensile"));
+}
+
 int main() { return tf::test::run(); }

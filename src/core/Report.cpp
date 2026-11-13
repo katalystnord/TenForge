@@ -181,6 +181,15 @@ QString reportHtml(const QJsonObject &doc, const Specimen &sp, const QString &ch
                             + (profile.value("shipped").toBool() ? ", shipped with TenForge"
                                                                  : ", a user profile"));
     h += row("Profile SHA-256", profile.value("sha256").toString());
+    // Curves from elsewhere drawn beside this one: named, with their files.
+    QStringList refs;
+    for (const QJsonValue &v : doc.value("reference_curves").toArray()) {
+        const QJsonObject r = v.toObject();
+        refs << "\"" + r.value("series").toString() + "\" from " + r.value("file").toString()
+                    + " (SHA-256 " + r.value("sha256").toString() + "), for comparison only";
+    }
+    if (!refs.isEmpty())
+        h += row("Reference curves", refs.join("; "));
     h += row("Analysed", doc.value("computed").toString());
     h += row("Software", app.value("name").toString() + " " + app.value("version").toString()
                              + " (build " + app.value("build").toString() + ")");

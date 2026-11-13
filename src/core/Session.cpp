@@ -62,6 +62,7 @@ QString Session::openData(const QString &path)
     specimen = {};  // a new file is a new specimen; the procedure is kept
     modulusWindow.reset();
     curveNotes.clear();
+    references.clear();
 
     QString why;
     mapping.forceColumn = guessForceColumn(*m_table, &why);
@@ -142,6 +143,16 @@ QString Session::openRecord(const QString &dirOrManifest)
     fixture = o.fixture;
     modulusWindow = o.modulusWindow;
     curveNotes = o.curveNotes;
+    references.clear();
+    for (const auto &rr : o.references) {
+        QString err;
+        auto r = readReferenceCurve(o.dir + "/" + rr.file, rr.series, rr.strainColumn,
+                                    rr.strainUnit, rr.stressColumn, rr.stressUnit, &err);
+        if (r)
+            references.push_back(std::move(*r));
+        else
+            m_notices << "The reference curve \"" + rr.series + "\" cannot be read again: " + err + ".";
+    }
     setCompliance({});
     if (!o.complianceFile.isEmpty()) {
         const QString err = setCompliance(o.dir + "/" + o.complianceFile);
@@ -211,6 +222,20 @@ QString Session::displacementWord() const
 {
     const QString m = mode();
     return m == "flexure" ? "deflection" : m == "compression" ? "deformation" : "extension";
+}
+
+QString Session::addReferenceCurve(const QString &path, const QString &series,
+                                   const QString &strainColumn, const QString &strainUnit,
+                                   const QString &stressColumn, const QString &stressUnit)
+{
+    QString error;
+    auto r = readReferenceCurve(path, series, strainColumn, strainUnit, stressColumn, stressUnit,
+                                &error);
+    if (!r)
+        return error;
+    references.push_back(std::move(*r));
+    m_analysis.reset();
+    return {};
 }
 
 QString Session::setCompliance(const QString &path)
@@ -561,6 +586,19 @@ bool Session::analyse()
                         {m_table->path, QString::fromLatin1(m_table->sha256),
                          a.imported.forceColumn, a.imported.extensionColumn, notes},
                         QDateTime::currentDateTimeUtc(), validity(a.profile));
+    if (!references.empty()) {
+        QJsonArray refs;
+        for (const ReferenceCurve &r : references)
+            refs.append(QJsonObject{{"file", QFileInfo(r.file).fileName()},
+                                    {"sha256", QString::fromLatin1(r.sha256)},
+                                    {"series", r.series},
+                                    {"strain_column", r.strainColumn},
+                                    {"strain_unit", r.strainUnit},
+                                    {"stress_column", r.stressColumn},
+                                    {"stress_unit", r.stressUnit},
+                                    {"points", qint64(r.strain.size())}});
+        a.doc["reference_curves"] = refs;
+    }
     if (modulusWindow) {
         const auto pct = [](double v) { return QString::number(v * 100.0, 'g', 6) + " %"; };
         QJsonObject conf = a.doc.value("conformity").toObject();
@@ -588,7 +626,8 @@ QString Session::saveRecord(const QString &dir) const
     if (!m_analysis)
         return "there is no analysis to save yet: " + next().text;
     return writeRecord(dir, *m_table, m_analysis->imported, specimen, m_analysis->profile,
-                       m_analysis->doc, fixture, m_compliancePath, modulusWindow, curveNotes);
+                       m_analysis->doc, fixture, m_compliancePath, modulusWindow, curveNotes,
+                       references);
 }
 
 } // namespace tf::core

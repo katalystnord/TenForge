@@ -603,6 +603,94 @@ private slots:
         if (!qEnvironmentVariable("TF_WALKTHROUGH_SHOTS").isEmpty())
             QFile::copy(report, qEnvironmentVariable("TF_WALKTHROUGH_SHOTS") + "/report-annotated.pdf");
     }
+
+    // Phase 4: the material card, yield points and CalculiX block, and the
+    // curve for ParaView, from the File menu; bending is refused on screen.
+    void export_for_freecad_calculix_and_paraview_from_the_menu()
+    {
+        QTemporaryDir tmp;
+        tf::gui::MainWindow w;
+        w.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&w));
+        followToAnalysis(w);
+        if (QTest::currentTestFailed())
+            return;
+        QAction *fc = menuItem(&w, "File", "Export for FreeCAD and CalculiX...");
+        QVERIFY(fc && fc->isEnabled());
+        answerFileDialog(tmp.path() + "/steel.FCMat");
+        fc->trigger();
+        const QString card = QString::fromUtf8(bytesOf(tmp.path() + "/steel.FCMat"));
+        QVERIFY2(card.contains("UltimateTensileStrength: \"500 MPa\""), qPrintable(card.left(400)));
+        const QString yp = QString::fromUtf8(bytesOf(tmp.path() + "/steel-yieldpoints.txt"));
+        QCOMPARE(yp.trimmed().split('\n').size(), 20);
+        QVERIFY(QString::fromUtf8(bytesOf(tmp.path() + "/steel-plastic.inp")).contains("*PLASTIC"));
+
+        QAction *vtp = menuItem(&w, "File", "Export curve for ParaView...");
+        QVERIFY(vtp && vtp->isEnabled());
+        answerFileDialog(tmp.path() + "/ro.vtp");
+        vtp->trigger();
+        QVERIFY(bytesOf(tmp.path() + "/ro.vtp").contains("<VTKFile type=\"PolyData\""));
+
+        QAction *pmd = menuItem(&w, "File", "Export for Platform MaterialDigital (JSON-LD)...");
+        QVERIFY(pmd && pmd->isEnabled());
+        answerFileDialog(tmp.path() + "/ro.jsonld");
+        pmd->trigger();
+        QVERIFY(bytesOf(tmp.path() + "/ro.jsonld").contains("https://w3id.org/pmd/tto/"));
+    }
+
+    // Phase 4: a curve digitised with PlotTracer drawn beside the test's
+    // own, in the figure, and kept by the record.
+    void add_a_plottracer_reference_curve_and_keep_it_in_the_record()
+    {
+        QTemporaryDir tmp;
+        const QString rec = tmp.path() + "/RO-ref";
+        {
+            tf::gui::MainWindow w;
+            w.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&w));
+            followToAnalysis(w);
+            if (QTest::currentTestFailed())
+                return;
+            QAction *add = menuItem(&w, "File", "Add reference curve (PlotTracer)...");
+            QVERIFY(add && add->isEnabled());
+            answerFileDialog(fixture("plottracer/curve-export.json"));
+            // Then the dialog: the curve and its columns are proposed; check
+            // and accept them as a user would.
+            QString seen;
+            QTimer::singleShot(400, [&seen] {
+                auto *d = QApplication::activeModalWidget();
+                if (!d || d->objectName() != "referenceDialog") {
+                    seen = "no reference dialog";
+                    return;
+                }
+                auto *strain = labelled<QComboBox>(d, "Strain column");
+                auto *unit = labelled<QComboBox>(d, "Stress unit");
+                seen = (strain ? strain->currentText() : "-") + " | " + (unit ? unit->currentText() : "-");
+                QTest::keyClick(d, Qt::Key_Return);
+            });
+            add->trigger();
+            QCOMPARE(seen, QStringLiteral("Strain (%) | MPa"));
+            QStringList plots;
+            for (vtkIdType i = 0; i < w.chart()->GetNumberOfPlots(); ++i)
+                plots << QString::fromStdString(w.chart()->GetPlot(i)->GetLabel());
+            QVERIFY2(plots.contains("aluminium-like curve, made up for the fixture (reference)"),
+                     qPrintable(plots.join(", ")));
+            shot(&w, "5-reference");
+            answerFileDialog(rec);
+            menuItem(&w, "File", "Save record...")->trigger();
+        }
+        tf::gui::MainWindow w;
+        w.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&w));
+        answerFileDialog(rec + "/manifest.tfrec");
+        menuItem(&w, "File", "Open record...")->trigger();
+        QStringList plots;
+        for (vtkIdType i = 0; i < w.chart()->GetNumberOfPlots(); ++i)
+            plots << QString::fromStdString(w.chart()->GetPlot(i)->GetLabel());
+        QVERIFY2(plots.contains("aluminium-like curve, made up for the fixture (reference)"),
+                 qPrintable(plots.join(", ")));
+        QVERIFY(!button(&w, "Add them to the record's manifest"));
+    }
 };
 
 // Headless however it is started. Run straight from a shell on a Wayland

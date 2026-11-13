@@ -16,6 +16,7 @@
 #include "analysis/Tension.h"
 #include "core/Import.h"
 #include "core/Profile.h"
+#include "core/References.h"
 #include "core/Specimen.h"
 
 #include <QJsonArray>
@@ -82,6 +83,13 @@ public:
     // keeps it. Empty: the procedure's own window.
     std::optional<std::pair<double, double>> modulusWindow;
     std::vector<CurveNote> curveNotes;
+
+    // Curves from elsewhere drawn beside this one (PlotTracer exports).
+    // Never used by the analysis; the record keeps each file.
+    std::vector<ReferenceCurve> references;
+    QString addReferenceCurve(const QString &path, const QString &series,
+                              const QString &strainColumn, const QString &strainUnit,
+                              const QString &stressColumn, const QString &stressUnit);
 
     // A machine compliance table: a file of force against the machine's own
     // displacement, taken out of the displacement before strain is

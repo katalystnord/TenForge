@@ -32,7 +32,8 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
                     const Specimen &specimen, const Profile &profile, QJsonObject results,
                     const Fixture &fixture = {}, const QString &compliancePath = {},
                     const std::optional<std::pair<double, double>> &modulusWindow = {},
-                    const std::vector<CurveNote> &curveNotes = {});
+                    const std::vector<CurveNote> &curveNotes = {},
+                    const std::vector<ReferenceCurve> &references = {});
 
 struct OpenedRecord {
     QString error;                 // non-empty: the record could not be read
@@ -43,6 +44,8 @@ struct OpenedRecord {
     QString complianceFile;        // relative to dir; empty when none was used
     std::optional<std::pair<double, double>> modulusWindow;  // the user's, if any
     std::vector<CurveNote> curveNotes;
+    // Reference curves as the record names them; `file` relative to dir.
+    std::vector<ReferenceCurve> references;
     tf::analysis::TensionInput input;
     QString profileId, profileVersion;
     QByteArray profileSha256;

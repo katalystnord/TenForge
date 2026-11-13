@@ -55,6 +55,10 @@ public slots:
     void saveRecord();
     void exportReport();
     void exportChart();
+    void exportFreecad();
+    void exportVtp();
+    void addReference();
+    void exportPmd();
 
 private:
     QWidget *buildInputs();
@@ -119,6 +123,8 @@ private:
     vtkSmartPointer<AnnotatedChart> m_chartXY;
 
     QAction *m_saveRecord = nullptr, *m_exportReport = nullptr, *m_exportChart = nullptr;
+    QAction *m_exportFreecad = nullptr, *m_exportVtp = nullptr;
+    QAction *m_addReference = nullptr, *m_clearReferences = nullptr, *m_exportPmd = nullptr;
 };
 
 } // namespace tf::gui

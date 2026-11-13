@@ -4,11 +4,13 @@
 
 #include <QFileInfo>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
 #include <QUuid>
 
 #include <algorithm>
+#include <map>
 #include <cmath>
 #include <optional>
 
@@ -318,6 +320,115 @@ QString curveVtp(const Analysis &a)
          + QString::number(keep.size()) + "</DataArray>\n      </Lines>\n";
     x += "    </Piece>\n  </PolyData>\n</VTKFile>\n";
     return x;
+}
+
+QString pmdJsonLd(const Analysis &a, const Specimen &s, QString *error)
+{
+    if (a.profile.mode != "tension") {
+        if (error)
+            *error = "Platform MaterialDigital's ontologies model the results of tensile tests "
+                     "(TTO); for compression and bending they have process classes only";
+        return {};
+    }
+    // TenForge's quantity -> the class of the quality or characteristic,
+    // the QUDT unit, and the factor from SI. TTO 3.0.0 terms that TTO's
+    // main branch has since deprecated are given as their PMDco 3.1.2
+    // replacements (ReH, ReL, A, the gauge length), so the document stays
+    // valid when TTO next releases.
+    struct Term {
+        const char *cls, *unit;
+        double fromSi;
+    };
+    static const std::map<QString, Term> terms{
+        {"E", {"pmd:PMD_0000618", "unit:GigaPA", 1e-9}},
+        {"Rp0.2", {"tto:TTO_0000047", "unit:MegaPA", 1e-6}},
+        {"ReH", {"pmd:PMD_0080173", "unit:MegaPA", 1e-6}},
+        {"ReL", {"pmd:PMD_0080172", "unit:MegaPA", 1e-6}},
+        {"Rm", {"tto:TTO_0000053", "unit:MegaPA", 1e-6}},
+        {"Fm", {"tto:TTO_0000023", "unit:N", 1.0}},
+        {"A", {"pmd:PMD_0060004", "unit:PERCENT", 100.0}},
+        {"Agt", {"tto:TTO_0000040", "unit:PERCENT", 100.0}},
+        {"Ag", {"tto:TTO_0000037", "unit:PERCENT", 100.0}},
+    };
+    const QString base = "urn:tenforge:"
+                         + a.doc.value("source").toObject().value("sha256").toString().left(32) + ":";
+    auto id = [&](const QString &local) { return QJsonObject{{"@id", base + local}}; };
+    QJsonArray graph, outputs, characteristics, qualities;
+    QStringList skipped;
+
+    auto datum = [&](const QString &key, const char *cls, const char *unit, double value,
+                     bool quality) {
+        const QString q = key;
+        graph.append(QJsonObject{{"@id", base + q}, {"@type", cls}});
+        graph.append(QJsonObject{
+            {"@id", base + q + "_datum"},
+            {"@type", "obo:IAO_0000109"},
+            {"obo:IAO_0000221", id(q)},
+            {"obo:OBI_0001938",
+             QJsonObject{{"@type", "obo:OBI_0001931"},
+                         {"obo:OBI_0001927", id(q)},
+                         {"obo:OBI_0001937", QJsonObject{{"@value", value}, {"@type", "xsd:double"}}},
+                         {"obo:IAO_0000039", QJsonObject{{"@id", unit}}}}}});
+        outputs.append(id(q + "_datum"));
+        (quality ? qualities : characteristics).append(id(q));
+    };
+
+    if (const auto area = crossSection(s).area)
+        datum("S0", "tto:TTO_0000026", "unit:MilliM2", *area * 1e6, true);
+    if (s.gaugeLength && !a.imported.extensionIsStrain)
+        datum("L0", "pmd:PMD_0060016", "unit:MilliM", *s.gaugeLength * 1e3, true);
+    for (const ProfileResult &pr : a.profile.results) {
+        const auto *d = found(a, pr.key.toStdString());
+        if (!d)
+            continue;
+        const auto t = terms.find(pr.quantity);
+        if (t == terms.end()) {
+            skipped << pr.id;
+            continue;
+        }
+        QString local = pr.id;
+        local.replace('.', '_');
+        datum(local, t->second.cls, t->second.unit, d->value * t->second.fromSi, false);
+    }
+
+    const QString standard = a.profile.designation.isEmpty() ? a.profile.title : a.profile.designation;
+    QJsonObject process{{"@id", base + "test"},
+                        {"@type", "pmd:PMD_0000974"},
+                        {"obo:OBI_0000293", id("testpiece")},
+                        {"obo:BFO_0000055", id("plan")},
+                        {"obo:OBI_0000299", outputs}};
+    QString comment = "Made by TenForge " + applicationVersion() + " from " + source(a) + ". "
+                      + conformityLine(a) + ".";
+    if (!skipped.isEmpty())
+        comment += " Results with no class in PMDco or TTO, left out: " + skipped.join(", ") + ".";
+    process["rdfs:comment"] = comment;
+    graph.prepend(process);
+    graph.append(QJsonObject{{"@id", base + "plan"},
+                             {"@type", "obo:OBI_0000260"},
+                             {"obo:RO_0000059", id("method")}});
+    graph.append(QJsonObject{{"@id", base + "method"},
+                             {"@type", QJsonArray{"tto:TTO_0000054", "obo:IAO_0000033"}},
+                             {"rdfs:label", standard}});
+    QJsonObject piece{{"@id", base + "testpiece"},
+                      {"@type", "pmd:PMD_0020193"},
+                      {"obo:RO_0000087",
+                       QJsonObject{{"@id", base + "testpiece_role"}, {"@type", "obo:OBI_0000067"}}},
+                      {"obo:RO_0000086", qualities},
+                      {"obo:RO_0000053", characteristics}};
+    if (!s.id.isEmpty())
+        piece["rdfs:label"] = s.id;
+    graph.append(piece);
+
+    const QJsonObject doc{
+        {"@context",
+         QJsonObject{{"obo", "http://purl.obolibrary.org/obo/"},
+                     {"pmd", "https://w3id.org/pmd/co/"},
+                     {"tto", "https://w3id.org/pmd/tto/"},
+                     {"unit", "http://qudt.org/vocab/unit/"},
+                     {"rdfs", "http://www.w3.org/2000/01/rdf-schema#"},
+                     {"xsd", "http://www.w3.org/2001/XMLSchema#"}}},
+        {"@graph", graph}};
+    return QString::fromUtf8(QJsonDocument(doc).toJson(QJsonDocument::Indented));
 }
 
 } // namespace tf::core

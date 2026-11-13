@@ -1,0 +1,66 @@
+{
+  "series": [
+    {
+      "name": "aluminium-like curve, made up for the fixture",
+      "points": [
+        {
+          "Strain (%)": 0,
+          "Stress (MPa)": 0
+        },
+        {
+          "Strain (%)": 0.2,
+          "Stress (MPa)": 140
+        },
+        {
+          "Strain (%)": 0.4,
+          "Stress (MPa)": 255
+        },
+        {
+          "Strain (%)": 0.6,
+          "Stress (MPa)": 278
+        },
+        {
+          "Strain (%)": 1,
+          "Stress (MPa)": 290
+        },
+        {
+          "Strain (%)": 2,
+          "Stress (MPa)": 302
+        },
+        {
+          "Strain (%)": 4,
+          "Stress (MPa)": 315
+        },
+        {
+          "Strain (%)": 6,
+          "Stress (MPa)": 322
+        },
+        {
+          "Strain (%)": 8,
+          "Stress (MPa)": 325
+        },
+        {
+          "Strain (%)": 9,
+          "Stress (MPa)": null
+        },
+        {
+          "Strain (%)": 10,
+          "Stress (MPa)": 326
+        }
+      ]
+    },
+    {
+      "name": "upper bound",
+      "points": [
+        {
+          "Strain (%)": 4,
+          "Stress (MPa)": 330
+        }
+      ],
+      "relation": {
+        "role": "upper",
+        "of": "aluminium-like curve, made up for the fixture"
+      }
+    }
+  ]
+}

@@ -169,6 +169,13 @@ target_compile_definitions(test_exports PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME exports_for_freecad_calculix_and_paraview COMMAND test_exports)
 
+# --- Reference curves from PlotTracer (tf_core) -----------------------------
+add_executable(test_references test_references.cpp)
+target_link_libraries(test_references PRIVATE tf_core)
+target_compile_definitions(test_references PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME reference_curves_from_plottracer COMMAND test_references)
+
 # --- The analysis session behind the window (tf_core) -----------------------
 add_executable(test_session test_session.cpp)
 target_link_libraries(test_session PRIVATE tf_core)
@@ -234,6 +241,38 @@ if(TF_VALIDATION_DOWNLOADS)
                      ${CMAKE_BINARY_DIR}/braunschweig-14125-report.md)
     set_tests_properties(braunschweig_14125_agrees_with_testxpert PROPERTIES
         FIXTURES_REQUIRED braunschweig)
+endif()
+
+# --- The PMD JSON-LD names only what the released ontologies define --------
+# PMDco 3.1.2 and TTO 3.0.0 (CC BY 4.0), fetched as released, pinned by
+# SHA-256; a generated export's every class and property must be in them.
+find_package(Python3 COMPONENTS Interpreter)
+if(TF_VALIDATION_DOWNLOADS AND Python3_Interpreter_FOUND)
+    set(tf_pmd ${TF_VALIDATION_CACHE}/pmd)
+    add_test(NAME fetch_pmd_ontologies
+             COMMAND ${CMAKE_COMMAND}
+                     -DURL=https://raw.githubusercontent.com/materialdigital/core-ontology/v3.1.2/pmdco-full.ttl
+                     -DSHA256=bd5093e354c553b0fcca264c78d7048660ccd443637e1933cd7b6cffe779a862
+                     -DDEST=${tf_pmd}/pmdco-3.1.2-full.ttl
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/validation/fetch_file.cmake)
+    add_test(NAME fetch_tto_ontology
+             COMMAND ${CMAKE_COMMAND}
+                     -DURL=https://raw.githubusercontent.com/materialdigital/tensile-test-ontology/v3.0.0/tto-full.ttl
+                     -DSHA256=27fb9a790fca56c472ce65da1053438101145e765e7c75076d549bb1852d28ae
+                     -DDEST=${tf_pmd}/tto-3.0.0-full.ttl
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/validation/fetch_file.cmake)
+    set_tests_properties(fetch_pmd_ontologies fetch_tto_ontology PROPERTIES FIXTURES_SETUP pmd)
+    add_test(NAME pmd_export_writes_pmd_jsonld
+             COMMAND tf-analyse --profile iso-6892-1-2019 --area "120.64 mm2"
+                     --gauge-length "50 mm" --pmd ${CMAKE_BINARY_DIR}/pmd-export.jsonld
+                     ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/synthetic/discontinuous.csv)
+    set_tests_properties(pmd_export_writes_pmd_jsonld PROPERTIES FIXTURES_SETUP pmd_export)
+    add_test(NAME pmd_jsonld_uses_only_terms_of_the_released_ontologies
+             COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/validation/check_pmd_iris.py
+                     ${CMAKE_BINARY_DIR}/pmd-export.jsonld
+                     ${tf_pmd}/pmdco-3.1.2-full.ttl ${tf_pmd}/tto-3.0.0-full.ttl)
+    set_tests_properties(pmd_jsonld_uses_only_terms_of_the_released_ontologies
+                         PROPERTIES FIXTURES_REQUIRED "pmd;pmd_export")
 endif()
 
 # --- Validation: BAM S355 (committed, CC BY 4.0) -----------------------------
