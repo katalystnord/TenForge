@@ -360,4 +360,126 @@ TF_CASE(force_and_displacement_names_in_other_languages_are_recognised)
     }
 }
 
+// --- MTS ---------------------------------------------------------------------
+// Real exports, unchanged (tests/fixtures/mts/SOURCE.md). Every expected value
+// below was read from the file with awk, not with TenForge.
+
+// The value of the preamble entry whose key, without a trailing colon, is key.
+static QString entry(const Table &t, const QString &key)
+{
+    for (const auto &p : t.preamble) {
+        QString k = p.key.trimmed();
+        if (k.endsWith(':'))
+            k.chop(1);
+        if (k.trimmed() == key)
+            return p.value;
+    }
+    return "(none)";
+}
+
+TF_CASE(mts793_export_written_in_chunks_is_read_whole_and_in_order)
+{
+    // MTS 793 writes its data in blocks of 1024 rows, each under the same
+    // header again; reading only the first block silently lost 221 rows.
+    const auto r = readTable(fixture("mts/mts793-chunked.dat"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.delimiter == '\t');
+    TF_CHECK(t.decimal == '.');
+    TF_CHECK(t.names == QStringList({"Time", "Ch 1 LVDT", "Ch 1 Force"}));
+    TF_CHECK(t.units == QStringList({"s", "mm", "N"}));
+    TF_REQUIRE(t.columns.size() == 3);
+    TF_CHECK(t.columns[0].size() == 1245);
+    TF_NEAR(t.columns[0][0], 0.11035156, 1e-12);
+    TF_NEAR(t.columns[0][1023], 102.01074, 1e-12);  // the first block's last row
+    TF_NEAR(t.columns[0][1024], 102.11035, 1e-12);  // the second block's first
+    TF_NEAR(t.columns[2][1244], -0.22730324, 1e-12);
+    TF_CHECK(t.results.empty());
+    TF_CHECK(t.notes.join("\n").contains("2 blocks"));
+    TF_CHECK(guessForceColumn(t) == "Ch 1 Force");
+    TF_CHECK(guessExtensionColumn(t) == "Ch 1 LVDT");
+}
+
+TF_CASE(german_mts793_export_keeps_its_other_block_as_the_files_own_values)
+{
+    // Latin-1, decimal comma, an operator block of key-value lines, the data,
+    // then a second block of other columns and two rows.
+    const auto r = readTable(fixture("mts/mts793-german.dat"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.decimal == ',');
+    TF_CHECK(t.names == QStringList({"Datum", "Laufzeit", "Ch 1 Kraft Sollwert", "Ch 1 Kraft",
+                                     "Ch 1 Weg", "1944 B", "1281068", "2157"}));
+    TF_CHECK(t.units == QStringList({"d", "s", "kN", "kN", "mm", "mm", "mm", "mm"}));
+    TF_REQUIRE(t.columns.size() == 8);
+    TF_CHECK(t.columns[3].size() == 572);
+    TF_NEAR(t.columns[3][0], -1.0232348, 1e-12);
+    TF_CHECK(entry(t, QString::fromUtf8("Prüfer")) == "Kh");
+    TF_CHECK(entry(t, "Durchmesser") == "98,6");
+    // The second block: 5 columns by 2 rows, values as written.
+    TF_CHECK(t.results.size() == 10);
+    const FileResult *low = nullptr;
+    for (const auto &f : t.results)
+        if (f.name == "Ch 1 Kraft" && f.row == "2")
+            low = &f;
+    TF_REQUIRE(low != nullptr);
+    TF_CHECK(low->value == "-147,20456");
+    TF_CHECK(low->unit == "kN");
+    TF_CHECK(low->table.startsWith("Datenerfassung"));
+    // The set point is a command, not a measured force.
+    TF_CHECK(guessForceColumn(t) == "Ch 1 Kraft");
+    TF_CHECK(guessExtensionColumn(t) == "Ch 1 Weg");
+}
+
+TF_CASE(testsuite_export_reads_its_key_colon_value_header)
+{
+    const auto r = readTable(fixture("mts/testsuite-quoted.csv"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.delimiter == ',');
+    TF_CHECK(t.names == QStringList({"Crosshead", "Load", "Time"}));
+    TF_CHECK(t.units == QStringList({"mm", "N", "sec"}));
+    TF_CHECK(t.columns[0].size() == 681);
+    TF_NEAR(t.columns[1][680], -85.9580993652344, 1e-12);
+    QStringList keys;
+    for (const auto &p : t.preamble)
+        keys << p.key;
+    TF_CHECK(keys == QStringList({"File Path", "Test", "Test Run", "Date"}));
+    TF_CHECK(entry(t, "Test Run") == "BMA_01TS55_01_20211122");
+    TF_CHECK(guessForceColumn(t) == "Load");
+    TF_CHECK(guessExtensionColumn(t) == "Crosshead");
+}
+
+TF_CASE(testsuite_export_with_a_decimal_comma_and_exponents)
+{
+    const auto r = readTable(fixture("mts/testsuite-decimal-comma.txt"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.delimiter == '\t');
+    TF_CHECK(t.decimal == ',');
+    TF_CHECK(t.names == QStringList({"CycleCount", "Axial Displacement", "Axial Force"}));
+    TF_CHECK(t.columns[1].size() == 1856);
+    TF_NEAR(t.columns[1][0], 6.97374318292532e-05, 1e-18);
+    TF_NEAR(t.columns[2][1], 2.47375440597534, 1e-12);
+    TF_CHECK(entry(t, "Test") == "Quasi static tensile");
+    TF_CHECK(guessExtensionColumn(t) == "Axial Displacement");
+}
+
+TF_CASE(french_testsuite_export_asks_which_of_its_deformations_to_use)
+{
+    // Two extensometer readings and the crosshead's deformation: TenForge
+    // cannot know which the person wants, so it asks.
+    const auto r = readTable(fixture("mts/testsuite-french.txt"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.decimal == '.');
+    TF_CHECK(t.columns[0].size() == 120);
+    TF_CHECK(t.names.value(3) == QString::fromUtf8("Déformation_Traverse"));
+    TF_CHECK(entry(t, "Essai") == "Traction_MOE_Dopamics");
+    TF_CHECK(guessForceColumn(t) == "Force");
+    TF_CHECK(guessExtensionColumn(t).isEmpty());
+    const TensionImport ti = toTension(t, TensionMapping{});
+    TF_CHECK(ti.error.contains("3 candidates"));
+}
+
 int main() { return tf::test::run(); }

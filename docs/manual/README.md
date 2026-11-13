@@ -44,13 +44,18 @@ TenForge only reads it.
 
 Exports checked with real files from: **ZwickRoell** testXpert III (and a
 French-language Zwick export); **Instron** Bluehill 2 and 3 (also in
-Italian), Bluehill Universal and Merlin. Column names are recognised in English, German, French,
-Italian, Spanish and Portuguese; where none fits, the window asks which
-column is which.
+Italian), Bluehill Universal and Merlin; **MTS** 793 (MultiPurpose
+TestWare `.dat`, in English and German, with its data in blocks of 1024
+rows read whole) and TestSuite (in English and French, decimal point or
+comma). Column names are recognised in English, German, French,
+Italian, Spanish and Portuguese; a controller's set point ("Sollwert",
+"Command") is never taken as the force. Where no column fits, or several
+do, the window asks which column is which.
 
 **The machine software's own results.** Some exports carry the results
 the machine's software computed (Instron Bluehill writes a "Results
-Table" above the curve). TenForge shows them under its own results, in
+Table" above the curve; an MTS 793 file can hold a second, unlabelled
+acquisition after the curve). TenForge shows them under its own results, in
 a section of their own, exactly as written: they are the file's, not
 TenForge's, and TenForge neither checks nor uses them. Side by side they
 show where two methods differ: a modulus found by Bluehill's "Automatic

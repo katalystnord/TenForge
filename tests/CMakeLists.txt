@@ -108,6 +108,23 @@
 #     switched off, red.
 #   Considered and rejected as validation: Bluehill's tensile strength on
 #   six composite specimens (tests/fixtures/instron/SOURCE.md says why).
+#
+# NEGATIVE CHECKS, 2026-11-13, machine exports (MTS):
+#   - import_machine_exports, 5 MTS cases: written first; the run aborted
+#     at the chunked 793 case (read only to row 1024), so the four after it
+#     were not seen red then. Then each fix undone on its own, test_import
+#     run, restored:
+#       no 793 reader, or only the first block joined: the chunked case red
+#       (out of range at row 1025);
+#       the second acquisition dropped: the German 793 case red;
+#       "Key: value" lines not read: all three TestSuite cases red;
+#       set points kept as force candidates: the German 793 case red;
+#       French "allongement" unknown: the French case red (2 candidates);
+#       "LVDT" and "Weg" unknown: both 793 cases red.
+#     The decimal-comma TestSuite case has no fix of its own: its comma and
+#     exponents were read before; it is red only on its "Test: ..." line.
+#   Did not catch: stripping a byte order mark, because Qt's UTF-8
+#   decoder already drops it; the strip was dead code and was removed.
 
 # --- The engine stands alone ------------------------------------------------
 # Every public header of tf_analysis, included into one translation unit and

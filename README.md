@@ -146,6 +146,15 @@ and bending, with what is not yet validated).
   Sola, A., Messori, M. (2019), [doi:10.17632/kbg7dz3yhx.3](https://doi.org/10.17632/kbg7dz3yhx.3),
   CC BY 4.0; Hong, C. (2020), [doi:10.6084/m9.figshare.13345313.v1](https://doi.org/10.6084/m9.figshare.13345313.v1),
   CC BY 4.0.
+- MTS exports (MTS 793 and TestSuite) included unchanged in
+  `tests/fixtures/mts/` (sources, licences and MIT notices in its
+  `SOURCE.md`): BAM's [LebeDigital](https://github.com/BAMresearch/LebeDigital)
+  and evnchn's [ISDN2603-Tensile-Test](https://github.com/evnchn-HKUST-academics/ISDN2603-Tensile-Test)
+  (MIT); Peloquin, J. (2023), [doi:10.17632/wj766p2w9t.1](https://doi.org/10.17632/wj766p2w9t.1);
+  Ghandour, S., Christie, I., Öhman-Mägi, C., Persson, C. (2023),
+  [doi:10.5281/zenodo.8380702](https://doi.org/10.5281/zenodo.8380702);
+  Cathelineau, P. (2025), [doi:10.5281/zenodo.15343816](https://doi.org/10.5281/zenodo.15343816);
+  all three CC BY 4.0.
 
 See [NOTICE](NOTICE).
 

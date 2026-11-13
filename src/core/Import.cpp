@@ -222,6 +222,20 @@ const QRegularExpression &forceRe()
     return re;
 }
 
+// Columns named as force, less the controller's set points ("Ch 1 Kraft
+// Sollwert", "Force Command"): a set point is what was asked for, not what
+// was measured.
+QList<int> forceCandidates(const QStringList &names)
+{
+    static const QRegularExpression setPoint(R"(soll|set\s*point|command|consigne|commande)",
+                                             QRegularExpression::CaseInsensitiveOption);
+    QList<int> out;
+    for (int c : matching(names, forceRe()))
+        if (!setPoint.match(names[c]).hasMatch())
+            out << c;
+    return out;
+}
+
 // The displacement column, in tiers: a column of the first tier that has
 // any wins, so an extensometer beats a named deformation, which beats the
 // crosshead. Several in one tier are left for the person to choose.
@@ -230,12 +244,12 @@ const std::vector<QRegularExpression> &extensionTiers()
     static const std::vector<QRegularExpression> tiers{
         QRegularExpression(R"(extensometer)", QRegularExpression::CaseInsensitiveOption),
         QRegularExpression(R"(extension|elongation|strain|dehnung|deflection|durchbiegung|)"
-                           R"(verformung|d[eé]formation|compression|stauchung|)"
+                           R"(verformung|d[eé]formation|allongement|compression|stauchung|)"
                            R"(allungamento|estensione|deformazione|flessione|)"
                            R"(alargamiento|elongaci[oó]n|deformaci[oó]n|flecha|)"
                            R"(alongamento|deforma[cç][aã]o)",
                            QRegularExpression::CaseInsensitiveOption),
-        QRegularExpression(R"(displacement|crosshead|traverse|position|stroke|)"
+        QRegularExpression(R"(displacement|crosshead|traverse|position|stroke|lvdt|\bweg\b|)"
                            R"(corsa|traversa|spostamento|posizione|)"
                            R"(desplazamiento|posici[oó]n|deslocamento|posi[cç][aã]o)",
                            QRegularExpression::CaseInsensitiveOption),
@@ -256,6 +270,142 @@ QList<int> extensionCandidates(const QStringList &names)
 QString listColumns(const QStringList &names)
 {
     return "the file has: " + names.join(", ");
+}
+
+void noteResults(Table &t)
+{
+    if (!t.results.empty())
+        t.notes << QString("the file holds %1 result(s) of its own software; they are shown as the "
+                           "file's, not used by the analysis")
+                       .arg(t.results.size());
+}
+
+// MTS 793 (MultiPurpose TestWare) ".dat": a signature line
+// "MTS793|MPT|<language>|..|..|<decimal>|<date sep>|<time sep>|..", then
+// sections, each under a title line ("Data Acquisition ... Time: 102.0 s
+// <date>"). A data section has a names row, a units row and rows of
+// numbers; an information section ("Bediener Information") has key-value
+// lines up to "<title> Ende"/"End". The data comes in sections of at most
+// 1024 rows under the same header, so sections with the same columns are
+// one table, joined in order. A section with other columns (a peak-valley
+// acquisition, unlabelled) is kept as the file's own values.
+TableOrError readMts793(const QString &path, const QByteArray &bytes, const QStringList &lines)
+{
+    const QStringList sig = lines.front().split('|');
+    const QChar decimal = sig.value(5) == "," ? QChar(',') : QChar('.');
+
+    struct Section {
+        QString title;
+        QStringList names, units;
+        std::vector<QStringList> rows;
+    };
+    std::vector<Section> data;
+    Table t;
+    t.path = path;
+    t.sha256 = QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex();
+    t.delimiter = '\t';
+    t.decimal = decimal;
+
+    // A title line: a name, then later a field "Time:"/"Zeit:" followed by a number.
+    auto isTitle = [&](const QStringList &fs) {
+        if (fs.size() < 3 || fs[0].isEmpty())
+            return false;
+        for (int k = 1; k + 1 < fs.size(); ++k)
+            if (fs[k].endsWith(':') && number(fs[k + 1], decimal).has_value() && !fs[k + 1].isEmpty())
+                return true;
+        return false;
+    };
+    auto describe = [](const QStringList &fs) {
+        QStringList rest;
+        for (int k = 1; k < fs.size(); ++k)
+            if (!fs[k].isEmpty())
+                rest << fs[k];
+        return rest.join(' ');
+    };
+
+    for (int i = 1; i < lines.size(); ++i) {
+        const QStringList fs = fields(lines[i], '\t');
+        if (!isTitle(fs))
+            continue;
+        const QString title = fs[0];
+        // Information section: key-value lines up to "<title> End(e)".
+        int end = -1;
+        for (int j = i + 1; j < lines.size() && !lines[j].trimmed().isEmpty(); ++j)
+            if (lines[j].trimmed().startsWith(title + " "))
+                end = j;
+        if (end >= 0) {
+            t.preamble.push_back({title, describe(fs), QString()});
+            for (int j = i + 1; j < end; ++j) {
+                const QStringList kv = fields(lines[j], '\t');
+                if (!kv[0].isEmpty())
+                    t.preamble.push_back({kv[0], kv.value(1), kv.value(2)});
+            }
+            i = end;
+            continue;
+        }
+        if (i + 2 >= lines.size())
+            break;
+        Section s;
+        s.title = title + " (" + describe(fs) + ")";
+        s.names = fields(lines[i + 1], '\t');
+        s.units = fields(lines[i + 2], '\t');
+        int j = i + 3;
+        for (; j < lines.size(); ++j) {
+            const QStringList row = fields(lines[j], '\t');
+            if (row.size() != s.names.size() || !numericRow(row, decimal))
+                break;
+            s.rows.push_back(row);
+        }
+        data.push_back(std::move(s));
+        i = j - 1;
+    }
+
+    // The table: the columns with the most rows over all their sections.
+    std::map<QString, size_t> rowsOf;
+    auto keyOf = [](const Section &s) { return s.names.join('\t') + '\n' + s.units.join('\t'); };
+    for (const auto &s : data)
+        rowsOf[keyOf(s)] += s.rows.size();
+    QString main;
+    size_t most = 0;
+    for (const auto &s : data)  // in file order, so a tie goes to the first
+        if (rowsOf[keyOf(s)] > most) {
+            most = rowsOf[keyOf(s)];
+            main = keyOf(s);
+        }
+    if (most < 2)
+        return {std::nullopt, path + " is an MTS 793 export with no block of numeric rows"};
+
+    int joined = 0;
+    for (const auto &s : data) {
+        if (keyOf(s) == main) {
+            if (joined++ == 0) {
+                t.names = s.names;
+                for (const QString &u : s.units)
+                    t.units << stripBrackets(u);
+                t.columns.assign(s.names.size(), {});
+                t.preamble.push_back({s.title.section(" (", 0, 0), s.title.section(" (", 1).chopped(1),
+                                      QString()});
+            }
+            for (const auto &row : s.rows)
+                for (int c = 0; c < row.size(); ++c)
+                    t.columns[c].push_back(*number(row[c], decimal));
+        } else {
+            for (size_t r = 0; r < s.rows.size(); ++r)
+                for (int c = 0; c < s.names.size(); ++c)
+                    t.results.push_back({s.title, QString::number(r + 1), s.names[c],
+                                         stripBrackets(s.units.value(c)), s.rows[r][c]});
+        }
+    }
+    t.notes << QString("an MTS 793 export (language %1)").arg(sig.value(2));
+    if (joined > 1)
+        t.notes << QString("the data came in %1 blocks with the same columns (MTS 793 writes it so); "
+                           "they are joined in order, no row left out")
+                       .arg(joined);
+    if (!t.results.empty())
+        t.notes << QString("the file has %1 value(s) from another acquisition with other columns, "
+                           "unlabelled; they are shown as the file's, not used by the analysis")
+                       .arg(t.results.size());
+    return {t, {}};
 }
 
 } // namespace
@@ -302,6 +452,9 @@ TableOrError readTable(const QString &path)
     for (QString &l : lines)
         if (l.endsWith('\r'))
             l.chop(1);
+
+    if (!lines.isEmpty() && lines.front().startsWith("MTS793|MPT|"))
+        return readMts793(path, bytes, lines);
 
     const Dialect d = bestDialect(lines);
     if (d.count < 2)
@@ -385,6 +538,16 @@ TableOrError readTable(const QString &path)
             t.preamble.push_back({fs[0], fs[1], fs.size() >= 3 ? fs[2] : QString()});
             continue;
         }
+        // "Key: value" in one field (MTS TestSuite: "Test Run: ...",
+        // "Essai: ..."). The key is short and plain; the value is the rest.
+        static const QRegularExpression colon(R"(^([^:\t]{1,40}?):\s+(\S.*?)\s*$)");
+        if (fs.size() == 1) {
+            const auto c = colon.match(fs[0]);
+            if (c.hasMatch() && !c.captured(1).contains("  ")) {
+                t.preamble.push_back({c.captured(1).trimmed(), c.captured(2), QString()});
+                continue;
+            }
+        }
         // "key   value unit", with no delimiter (ZwickRoell testXpert): the
         // key ends at the first run of two or more spaces.
         static const QRegularExpression spaced(R"(^\s*(\S.*?)\s{2,}(\S+)(?:\s+(\S.*?))?\s*$)");
@@ -415,10 +578,7 @@ TableOrError readTable(const QString &path)
         t.units.removeFirst();
         t.columns.erase(t.columns.begin());
     }
-    if (!t.results.empty())
-        t.notes << QString("the file holds %1 result(s) of its own software; they are shown as the "
-                           "file's, not used by the analysis")
-                       .arg(t.results.size());
+    noteResults(t);
     return {t, {}};
 }
 
@@ -450,7 +610,7 @@ TensionImport toTension(const Table &t, const TensionMapping &m)
         return {};
     };
     int fc = -1, ec = -1;
-    QString err = choose(m.force, matching(t.names, forceRe()), "force", fc);
+    QString err = choose(m.force, forceCandidates(t.names), "force", fc);
     if (!err.isEmpty())
         return fail(err);
     err = choose(m.extension, extensionCandidates(t.names), "extension", ec);
@@ -548,7 +708,7 @@ QString guess(const Table &t, const QList<int> &hits, const QString &what, QStri
 
 QString guessForceColumn(const Table &t, QString *why)
 {
-    return guess(t, matching(t.names, forceRe()), "force", why);
+    return guess(t, forceCandidates(t.names), "force", why);
 }
 
 QString guessExtensionColumn(const Table &t, QString *why)

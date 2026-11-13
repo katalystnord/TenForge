@@ -57,6 +57,32 @@ tests/fixtures/instron/*
       Figshare. https://doi.org/10.6084/m9.figshare.13345313.v1
       Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
 
+tests/fixtures/mts/*
+    Five raw exports from MTS software (MTS 793 and MTS TestSuite),
+    unchanged, used as test data for the importer. Sources, licences and
+    SHA-256 in tests/fixtures/mts/SOURCE.md, which also carries the MIT
+    notices:
+    - mts793-german.dat: Bundesanstalt für Materialforschung und -prüfung
+      (BAM), github.com/BAMresearch/LebeDigital, MIT
+      (Copyright (c) 2020 Bundesanstalt für Materialforschung und -prüfung).
+    - mts793-chunked.dat: evnchn,
+      github.com/evnchn-HKUST-academics/ISDN2603-Tensile-Test, MIT
+      (Copyright (c) 2023 evnchn).
+    - testsuite-quoted.csv: Peloquin, J. (2023). Tensile performance data
+      of 3D printed photopolymer gyroid lattices created using a range of
+      base materials and lattice porosities (version 1). Mendeley Data.
+      https://doi.org/10.17632/wj766p2w9t.1
+      Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+    - testsuite-decimal-comma.txt: Ghandour, S., Christie, I.,
+      Öhman-Mägi, C., Persson, C. (2023). Quasi-Static and Fatigue Testing
+      Dataset for soft bone cements according to ASTM F2118. Zenodo.
+      https://doi.org/10.5281/zenodo.8380702
+      Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+    - testsuite-french.txt: Cathelineau, P. (2025). DOPAMICS | Tensile
+      tests-Mechanical data from DIC and laser extensometry. Zenodo.
+      https://doi.org/10.5281/zenodo.15343816
+      Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
 Data used by the test suite but not included
 --------------------------------------------
 
