@@ -1,5 +1,6 @@
 #include "core/Session.h"
 
+#include "core/Exports.h"
 #include "core/Record.h"
 #include "core/Results.h"
 
@@ -627,7 +628,7 @@ QString Session::saveRecord(const QString &dir) const
         return "there is no analysis to save yet: " + next().text;
     return writeRecord(dir, *m_table, m_analysis->imported, specimen, m_analysis->profile,
                        m_analysis->doc, fixture, m_compliancePath, modulusWindow, curveNotes,
-                       references);
+                       references, curveVtp(*m_analysis));
 }
 
 } // namespace tf::core

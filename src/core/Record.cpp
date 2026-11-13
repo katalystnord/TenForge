@@ -190,7 +190,7 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
                     const Fixture &fixture, const QString &compliancePath,
                     const std::optional<std::pair<double, double>> &modulusWindow,
                     const std::vector<CurveNote> &curveNotes,
-                    const std::vector<ReferenceCurve> &references)
+                    const std::vector<ReferenceCurve> &references, const QString &curveVtp)
 {
     if (QDir(dir).exists() && !QDir(dir).isEmpty(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden))
         return dir + " already holds files; a record is only written into a new or empty folder";
@@ -338,6 +338,9 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
     results["record"] = QJsonObject{{"manifest_sha256", QJsonValue()}, {"inputs", inputs}};
     w.write("results/results.json", jsonBytes(results), {{"role", "results"}});
     w.write("results/results.csv", resultsCsv(results).toUtf8(), {{"role", "results"}});
+    // The analysed curve, derived like the results, for ParaView and PyVista.
+    if (!curveVtp.isEmpty())
+        w.write("results/curve.vtp", curveVtp.toUtf8(), {{"role", "results"}});
 
     const QJsonObject manifest{
         {"format", "tenforge-record"},

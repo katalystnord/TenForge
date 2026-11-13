@@ -12,8 +12,10 @@ yet is listed under [What 0.2 does not do](#what-02-does-not-do).
 7. [The chart: regions, labels, notes, the modulus window](#the-chart-regions-labels-notes-the-modulus-window)
 8. [Figures and the report](#the-report)
 9. [Test records](#test-records)
-10. [Without a window: tf-analyse](#without-a-window-tf-analyse)
-11. [What 0.2 does not do](#what-02-does-not-do)
+10. [Into other tools: FreeCAD, CalculiX, ParaView, PyVista, PMD](#into-other-tools-freecad-calculix-paraview-pyvista-pmd)
+11. [Reference curves from PlotTracer](#reference-curves-from-plottracer)
+12. [Without a window: tf-analyse](#without-a-window-tf-analyse)
+13. [What 0.2 does not do](#what-02-does-not-do)
 
 ## Installing
 
@@ -259,6 +261,49 @@ analyses it again and tells you, above the fields:
   adopts them silently: **Add them to the record's manifest** records
   them with their hashes, and changes nothing else.
 
+## Into other tools: FreeCAD, CalculiX, ParaView, PyVista, PMD
+
+Each export says inside itself where it came from and whether its values
+are to the standard or only aligned with it. The record stays the record.
+The full rules: [docs/specs/exports-v1.md](../specs/exports-v1.md).
+
+**File > Export for FreeCAD and CalculiX...** writes three files:
+
+- `<name>.FCMat`, a FreeCAD material card with what the test measured:
+  Young's modulus, yield strength and tensile strength (tension), or
+  compressive strength (compression). A tensile test does not measure
+  Poisson's ratio or density, so they are not in the card: enter them in
+  FreeCAD before an FEM analysis. Copy the card into FreeCAD's user
+  material folder to use it.
+- `<name>-yieldpoints.txt`, the hardening curve for FreeCAD FEM's nonlinear
+  material: paste the lines into its Yield Points.
+- `<name>-plastic.inp`, the same curve as a CalculiX `*PLASTIC` block.
+
+The hardening curve is true stress against true plastic strain, from
+initial yield (ReL, or Rp0.2 when there is no yield point) at plastic
+strain 0 to the maximum force; necking is left out, and the stress never
+falls. It comes from tension tests only.
+
+**File > Export curve for ParaView...** writes the analysed curve as a
+`.vtp` file: open it in ParaView or read it with PyVista
+(`tools/recipes/pyvista_curve.py` shows how). Its arrays are SI and the
+results travel with it. Every saved record also holds its curve as
+`results/curve.vtp`.
+
+**File > Export for Platform MaterialDigital (JSON-LD)...** writes the
+tensile test as linked data in the PMD Core Ontology and Tensile Test
+Ontology, for PMD's knowledge graphs.
+
+## Reference curves from PlotTracer
+
+**File > Add reference curve (PlotTracer)...** draws a curve from
+elsewhere, for example a figure from a paper digitised with PlotTracer,
+beside your test's own: choose PlotTracer's JSON export, then the curve,
+which column is strain and which is stress, and their units (PlotTracer
+does not record units; TenForge proposes them from the column names).
+It is drawn dashed and named, appears in exported figures and the report,
+is kept in the record with its file, and is never used by the analysis.
+
 ## Without a window: tf-analyse
 
 The same analysis from the command line, for scripts:
@@ -273,6 +318,9 @@ tf-analyse --profile iso-14125-1998-four-point --loading-span "15 mm" \
 tf-analyse --profile iso-604-2002 --width "10 mm" --thickness "4 mm" \
            --gauge-length "10 mm" --compliance machine.csv export.csv
 ```
+
+`--freecad <name>`, `--vtp <file>` and `--pmd <file>` write the exports
+above.
 
 When something is missing, tf-analyse says what, in the window's words,
 with the option that supplies it.

@@ -39,3 +39,10 @@ Laboratory, TENSTAND project, EU G6RD-CT-2000-00412). Fetched at test time
 from npl.co.uk; no licence is stated for them, so they are not included.
 The agreed values in tests/validation/tenstand-agreed.json are transcribed
 from NPL Report DEPC MPE 015 (2005), Table 9.
+
+Platform MaterialDigital ontologies: PMD Core Ontology 3.1.2
+(https://w3id.org/pmd/co/, github.com/materialdigital/core-ontology) and
+the Tensile Test Ontology 3.0.0 (https://w3id.org/pmd/tto/,
+github.com/materialdigital/tensile-test-ontology), CC BY 4.0. TenForge's
+JSON-LD export uses their term IRIs; the test suite fetches the released
+files to check them, and they are not included.

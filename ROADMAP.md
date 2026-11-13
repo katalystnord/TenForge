@@ -201,6 +201,16 @@ criteria met and verified by driving the real thing.
 - Exit: opened by hand in ParaView 6.x and PyVista; card loaded in FreeCAD
   1.1.x; a FreeCAD CalculiX example run with exported `YieldPoints`;
   release 0.3.
+- **Status, 2026-11-13: in progress.** Done: the hardening curve (FreeCAD
+  YieldPoints, CalculiX *PLASTIC), the FreeCAD card, the curve as `.vtp`
+  (also in every record), PlotTracer reference curves, PMD JSON-LD
+  (PMDco 3.1.2, TTO 3.0.0). Checked: the card loads in FreeCAD 1.1.4 and
+  CalculiX solves FreeCAD's own nonlinear example on the yield points (an
+  automatic test where FreeCAD's flatpak is installed); PyVista 0.49 (VTK
+  9.7) reads the curve and its results; the JSON-LD names only terms of
+  the released ontologies. Open: ParaView 6.x by hand (not installed
+  yet), a ParaView reader for whole records, the record as `.pvd`/`.vtu`
+  (waits for DIC fields, Phase 6).
 
 ### Planned, place in the order to be decided: series and materials
 

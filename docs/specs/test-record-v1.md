@@ -306,3 +306,6 @@ chooses. They are views of the record, not part of it.
   "strain_column", "strain_unit", "stress_column", "stress_unit"}`; the file
   (a PlotTracer JSON export) is kept byte for byte with role `reference`,
   once however many curves come from it. Never used by the analysis.
+- **`results/curve.vtp`**: the analysed curve as VTK XML PolyData
+  (exports-v1, section 3), role `results`: derived like `results.json`, so
+  ParaView and PyVista open a record's curve with no plugin.

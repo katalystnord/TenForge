@@ -240,4 +240,25 @@ TF_CASE(compression_and_bending_are_not_exported_to_pmd_and_say_why)
     TF_CHECK(err.contains("tensile"));
 }
 
+TF_CASE(a_saved_record_carries_its_curve_for_paraview)
+{
+    Session s = tension();
+    QTemporaryDir dir;
+    TF_REQUIRE(s.saveRecord(dir.filePath("r")).isEmpty());
+    const QString vtp = dir.filePath("r/results/curve.vtp");
+    TF_REQUIRE(QFile::exists(vtp));
+    QFile m(dir.filePath("r/manifest.tfrec"));
+    TF_REQUIRE(m.open(QIODevice::ReadOnly));
+    const QByteArray manifest = m.readAll();
+    TF_CHECK(manifest.contains("results/curve.vtp"));
+    vtkNew<vtkXMLPolyDataReader> r;
+    r->SetFileName(vtp.toLocal8Bit().constData());
+    r->Update();
+    TF_CHECK(r->GetOutput()->GetNumberOfPoints() == vtkIdType(s.analysis()->stress.size()));
+    // Reopened, the record reports nothing changed or added.
+    Session o;
+    TF_REQUIRE(o.openRecord(dir.filePath("r")).isEmpty());
+    TF_CHECK(o.notices().isEmpty());
+}
+
 int main() { return tf::test::run(); }

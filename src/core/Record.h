@@ -33,7 +33,8 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
                     const Fixture &fixture = {}, const QString &compliancePath = {},
                     const std::optional<std::pair<double, double>> &modulusWindow = {},
                     const std::vector<CurveNote> &curveNotes = {},
-                    const std::vector<ReferenceCurve> &references = {});
+                    const std::vector<ReferenceCurve> &references = {},
+                    const QString &curveVtp = {});
 
 struct OpenedRecord {
     QString error;                 // non-empty: the record could not be read
