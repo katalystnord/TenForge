@@ -99,5 +99,7 @@ jobs:
           tag="$GITHUB_REF_NAME"
           notes=docs/release-notes/$tag.md
           gh release create "$tag" dist/TenForge-*-x86_64.AppImage \
+            tools/paraview/TenForgeRecordReader.py \
             --draft --title "TenForge $tag" --notes-file "$notes" \
-            || gh release upload "$tag" dist/TenForge-*-x86_64.AppImage --clobber
+            || gh release upload "$tag" dist/TenForge-*-x86_64.AppImage \
+            tools/paraview/TenForgeRecordReader.py --clobber

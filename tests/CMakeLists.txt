@@ -82,6 +82,18 @@
 #     strokes and markers, names a different font, writes text anchors SVG
 #     lacks and angles of the wrong sign. Each is rewritten in
 #     ChartExport.cpp and guarded by an assertion on the SVG.
+#
+# NEGATIVE CHECKS, 2026-11-13, Phase 4:
+#   - exports_for_freecad_calculix_and_paraview: the hardening-curve cases
+#     red against stubs (6 of 6) before the code.
+#   - pmd_jsonld_uses_only_terms_of_the_released_ontologies: red when one
+#     IRI in the export was changed.
+#   - paraview_opens_a_record_and_refuses_a_changed_one: red with the
+#     plugin's SHA-256 check switched off.
+#   - reference_curves_from_plottracer: a gap read as a zero instead of
+#     left out, red (a_reference_curve_is_read_in_si_without_its_gaps).
+#   NOT recorded: a deliberate break of
+#   freecad_loads_the_card_and_calculix_runs_the_yield_points.
 
 # --- The engine stands alone ------------------------------------------------
 # Every public header of tf_analysis, included into one translation unit and

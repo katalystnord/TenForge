@@ -201,7 +201,7 @@ criteria met and verified by driving the real thing.
 - Exit: opened by hand in ParaView 6.x and PyVista; card loaded in FreeCAD
   1.1.x; a FreeCAD CalculiX example run with exported `YieldPoints`;
   release 0.3.
-- **Status, 2026-11-13: in progress.** Done: the hardening curve (FreeCAD
+- **Status, 2026-11-13: done.** Done: the hardening curve (FreeCAD
   YieldPoints, CalculiX *PLASTIC), the FreeCAD card, the curve as `.vtp`
   (also in every record), PlotTracer reference curves, PMD JSON-LD
   (PMDco 3.1.2, TTO 3.0.0). Checked: the card loads in FreeCAD 1.1.4 and
@@ -211,8 +211,9 @@ criteria met and verified by driving the real thing.
   the released ontologies; ParaView 6.1.0 reads the curve (line chart)
   and opens whole records with TenForge's reader plugin, refusing a
   changed one (automatic test where ParaView's flatpak is installed).
-  Open: David opening the exports in ParaView by hand; the record as
-  `.pvd`/`.vtu` moves to Phase 6, when there are DIC fields to hold.
+  The record as `.pvd`/`.vtu` moves to Phase 6, when there are DIC
+  fields to hold. Version 0.3.0; the release attaches the ParaView reader
+  beside the AppImage. See docs/validation/phase-4.md.
 
 ### Planned, place in the order to be decided: series and materials
 

@@ -3,8 +3,9 @@
 Open universal testing software: tension, compression and bending, for
 any universal testing machine.
 
-**Status: release 0.2, tension, compression and bending from any
-machine's export.** Choose the procedure, open a CSV, follow the bar at the
+**Status: release 0.3, tension, compression and bending from any
+machine's export, with exports for FreeCAD, CalculiX, ParaView, PyVista
+and Platform MaterialDigital.** Choose the procedure, open a CSV, follow the bar at the
 top of the window, read the results with the curve, export a PDF or HTML
 report, save the test as an open record. Procedures: ISO 6892-1 (metals)
 and ISO 527-1 (plastics) in tension, ISO 604 (plastics) and ISO 844 (rigid

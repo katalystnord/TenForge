@@ -1,7 +1,7 @@
 # TenForge manual
 
-For TenForge 0.2. This manual grows with each release; what is not here
-yet is listed under [What 0.2 does not do](#what-02-does-not-do).
+For TenForge 0.3. This manual grows with each release; what is not here
+yet is listed under [What 0.3 does not do](#what-03-does-not-do).
 
 1. [Installing](#installing)
 2. [Analysing a tensile test](#analysing-a-tensile-test)
@@ -15,16 +15,16 @@ yet is listed under [What 0.2 does not do](#what-02-does-not-do).
 10. [Into other tools: FreeCAD, CalculiX, ParaView, PyVista, PMD](#into-other-tools-freecad-calculix-paraview-pyvista-pmd)
 11. [Reference curves from PlotTracer](#reference-curves-from-plottracer)
 12. [Without a window: tf-analyse](#without-a-window-tf-analyse)
-13. [What 0.2 does not do](#what-02-does-not-do)
+13. [What 0.3 does not do](#what-03-does-not-do)
 
 ## Installing
 
-**The AppImage** (Linux, x86_64): download `TenForge-0.2.0-x86_64.AppImage`
+**The AppImage** (Linux, x86_64): download `TenForge-0.3.0-x86_64.AppImage`
 from the project's Releases page, make it executable and run it:
 
 ```bash
-chmod +x TenForge-0.2.0-x86_64.AppImage
-./TenForge-0.2.0-x86_64.AppImage
+chmod +x TenForge-0.3.0-x86_64.AppImage
+./TenForge-0.3.0-x86_64.AppImage
 ```
 
 It carries Qt, VTK and everything else it needs, except the C library
@@ -169,7 +169,7 @@ with the test.
 ## Reading the results
 
 **The orange box comes first.** It says whether the results are *to the
-standard* or only *aligned with* it, and why. In 0.2 every result is
+standard* or only *aligned with* it, and why. In 0.3 every result is
 aligned, never to the standard, because:
 
 - the profiles' parameters (fit windows, offsets, rounding) were entered
@@ -294,7 +294,8 @@ results travel with it. Every saved record also holds its curve as
 Chart View** with X array `strain_percent` and Y `stress_MPa`. The 3D view
 scales both axes alike and squeezes the curve to a sliver. To open whole
 records, load TenForge's reader once (Tools > Manage Plugins > Load New,
-choose `tools/paraview/TenForgeRecordReader.py` from TenForge's sources,
+choose `TenForgeRecordReader.py`, attached to each release from 0.3 and
+in TenForge's sources under `tools/paraview/`,
 tick Auto Load); then File > Open a record's `manifest.tfrec` gives its
 curve with the specimen, procedure and conformity. Like TenForge, the
 reader refuses a record whose curve changed after it was written.
@@ -336,10 +337,14 @@ with the option that supplies it.
 
 `tf-analyse --help` lists every option.
 
-## What 0.2 does not do
+## What 0.3 does not do
 
 - **Files only.** Running a machine arrives in 0.4; until then TenForge
   analyses what another program recorded.
+- **Exports for simulation from tension only.** The hardening curve and
+  the PMD file come from tensile tests; the FreeCAD card also takes a
+  compressive strength. Bending results are not exported as material
+  data, and no card holds Poisson's ratio or density (not measured).
 - **One test at a time.** Statistics over a series (mean, standard
   deviation, confidence interval, Weibull) are computed by the engine but
   not yet offered in the window.
