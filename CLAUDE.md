@@ -85,6 +85,11 @@ headless however it is started.
 
 ### What a green test is worth
 
+- Walkthrough tests never open a window on the desktop, however they are
+  started: the test puts itself on a private X server (ensureHeadless()).
+  A shell here carries WAYLAND_DISPLAY, which `xvfb-run` alone does not
+  stop.
+
 - A green test proves nothing until it has been shown to fail WITHOUT the
   fix. Record the negative check in the test file, including what it did
   not catch.
@@ -119,8 +124,8 @@ src/gui/        tf_gui       the application window
 src/cli/        tf-analyse   headless command line
 profiles/       shipped profiles (JSON), compiled into tf_core
 tests/          one executable per subject; fixtures/ committed data
-tests/validation/  agreed values and the fetch script for data that may
-                not be committed (TENSTAND)
+tests/validation/  agreed values and the fetch script for data that is
+                not committed (TENSTAND; Braunschweig ISO 14125, by size)
 docs/specs/     the file contracts: test record, profile, results
 docs/validation/  what each phase was validated against, with every number
 docs/manual/    the user manual; images/ come from the walkthrough
@@ -128,7 +133,7 @@ docs/manual/    the user manual; images/ come from the walkthrough
 docs/release-notes/  one file per tag, used by the release workflow
 packaging/      desktop entry and icon
 tools/          run-tests.sh, check-no-em-dashes.sh, sanitize.sh, make-appimage.sh,
-                git-hooks/
+                git-hooks/, fixtures/ (the synthetic curves' generators)
 ```
 
 Driver plugins (`src/drivers/`) arrive in Phase 5, not before: no empty

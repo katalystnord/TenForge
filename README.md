@@ -3,15 +3,19 @@
 Open universal testing software: tension, compression and bending, for
 any universal testing machine.
 
-**Status: release 0.1, tensile tests from any machine's export.** Open a
-CSV, follow the bar at the top of the window, read the results with the
-curve, export a PDF or HTML report, save the test as an open record. The
-ISO 6892-1 (metals) and ISO 527-1 (plastics) analyses are validated
-against NPL's TENSTAND dataset and BAM's S355 tests (see
+**Status: release 0.2, tension, compression and bending from any
+machine's export.** Choose the procedure, open a CSV, follow the bar at the
+top of the window, read the results with the curve, export a PDF or HTML
+report, save the test as an open record. Procedures: ISO 6892-1 (metals)
+and ISO 527-1 (plastics) in tension, ISO 604 (plastics) and ISO 844 (rigid
+foams) in compression, ISO 178 (plastics, three-point) and ISO 14125
+(fibre composites, three- and four-point) in bending. Validated against
+NPL's TENSTAND dataset, BAM's S355 tests and, for bending, ZwickRoell
+testXpert III's own evaluation of TU Braunschweig's four-point tests (see
 [Validation](#validation)). The manual: [docs/manual/](docs/manual/).
 What comes next: [ROADMAP.md](ROADMAP.md).
 
-![TenForge with a tensile test analysed](docs/manual/images/analysed.png)
+![TenForge with a four-point bending test analysed](docs/manual/images/bend-analysed.png)
 
 ## What it is for
 
@@ -58,7 +62,8 @@ and run it. Or build from source, below.
 
 ## Analysing a file
 
-In the window: **Open data...**, then do what the bar at the top says.
+In the window: choose the **Procedure**, then do what the bar at the top
+says.
 The [manual](docs/manual/) walks through it.
 
 From the command line:
@@ -67,10 +72,18 @@ From the command line:
 tf-analyse --list-profiles
 tf-analyse --profile iso-6892-1-2019 --area "120.6 mm2" --gauge-length "50 mm" export.csv
 tf-analyse --profile iso-527-1-2019 --area "40 mm2" --json results.json export.csv
+tf-analyse --profile iso-178-2019 --width "10 mm" --thickness "4 mm" --span "64 mm" export.csv
+tf-analyse --profile iso-14125-1998-four-point --loading-span "15 mm" \
+           --deflection-at loading-points zwick-export.csv
+tf-analyse --profile iso-844-2021 --width "50 mm" --thickness "50 mm" --gauge-length "50 mm" \
+           --compliance machine.csv foam.csv
 ```
 
-Columns are found by name (force, load; extensometer, extension, strain)
-unless given with `--force` and `--extension`; units come from the file's
+Columns are found by name (force, load, Kraft; extensometer, then
+extension, deflection, deformation, strain and their German and French
+names, then crosshead or position) unless given with `--force` and
+`--extension`; width, thickness and span are taken from a file header that
+states them (ZwickRoell testXpert writes them); units come from the file's
 units row or column names, or `--force-unit` and `--extension-unit`.
 Comma, semicolon and tab files with a decimal point or comma are read as
 they are. Every result says how it was made, or why it could not be.
@@ -92,7 +105,16 @@ each reason.
   ReH within 0.7 MPa, Rm within 0.5 MPa and Fm within 0.1 % of BAM's
   values; E within 1 GPa for 9 of 10.
 
-Details: [docs/validation/phase-1.md](docs/validation/phase-1.md).
+- **TU Braunschweig ISO 14125** (23 four-point bending specimens of hemp
+  fibre laminate, raw testXpert III exports and testXpert's printed
+  results): Ef, the stresses at both ends of the modulus window, R2,
+  sigma_fM and eps_fM all within half a unit of the last digit testXpert
+  printed, and the same number of samples in every modulus regression
+  (161 comparisons, none failed). The data is fetched when the tests run.
+
+Details: [docs/validation/phase-1.md](docs/validation/phase-1.md) (tension)
+and [docs/validation/phase-3.md](docs/validation/phase-3.md) (compression
+and bending, with what is not yet validated).
 
 ## Built with
 
@@ -108,6 +130,14 @@ Details: [docs/validation/phase-1.md](docs/validation/phase-1.md).
   Physical Laboratory, TENSTAND project (EU G6RD-CT-2000-00412), NPL Report
   DEPC MPE 015 (2005). The datafiles are fetched from npl.co.uk when the
   tests run, not included.
+- TU Braunschweig four-point bending tests: Osten, A., Steinmetz, J.,
+  Charif, S., Voelkerink, O. (2025), [doi:10.5281/zenodo.17611621](https://doi.org/10.5281/zenodo.17611621),
+  CC BY 4.0. One export included unchanged in
+  `tests/fixtures/braunschweig-14125/`; the rest fetched when the tests run.
+- Aged PU foam compression tests: Pires da Silva, E. H. (2023),
+  [doi:10.17632/2sp8fyvhfm.3](https://doi.org/10.17632/2sp8fyvhfm.3),
+  CC BY 4.0. One test and its dimensions included unchanged in
+  `tests/fixtures/puf-d1621/`.
 
 See [NOTICE](NOTICE).
 

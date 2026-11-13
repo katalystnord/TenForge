@@ -7,8 +7,9 @@
 // dialogs are Qt's own here (MainWindow::setNativeDialogs(false)), filled
 // in the way a user types a path.
 //
-// The Phase 2 exit criterion is the first case: open a CSV and produce a
-// report using only on-screen guidance (ROADMAP).
+// The Phase 2 exit criterion: open a CSV and produce a report using only
+// on-screen guidance (ROADMAP). Phase 3 adds the same for a bending test,
+// on a real testXpert export whose header holds the specimen's size.
 
 #include "gui/MainWindow.h"
 
@@ -23,6 +24,8 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QSurfaceFormat>
 #include <QTableWidget>
 #include <QTemporaryDir>
@@ -31,6 +34,11 @@
 #include <QVTKOpenGLNativeWidget.h>
 
 #include <vtkRenderWindow.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <unistd.h>
+#include <vector>
 
 #ifndef TF_FIXTURES
 #error "TF_FIXTURES must point at tests/fixtures"
@@ -137,19 +145,57 @@ QTableWidget *resultsTable(QWidget *w)
     return nullptr;
 }
 
+// The input panel's content fits its visible width: nothing is cut off at
+// the right edge (it cannot be scrolled to sideways). A real export's long
+// names and the bending rows once made it wider than the panel.
+QString panelOverflow(QWidget *w)
+{
+    for (QScrollArea *a : w->findChildren<QScrollArea *>()) {
+        if (!a->isVisible() || !a->widget())
+            continue;
+        const int need = a->widget()->minimumSizeHint().width();
+        const int have = a->viewport()->width();
+        if (need > have)
+            return QString("the input panel needs %1 px and shows %2 px").arg(need).arg(have);
+    }
+    return {};
+}
+
 QByteArray bytesOf(const QString &path)
 {
     QFile f(path);
     return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
 }
 
-// Opens the synthetic Ramberg-Osgood curve and follows the banner to an
-// analysis: a rectangular 15.708 mm x 5 mm specimen (S0 78.54 mm2, the
-// fixture's), Le 50 mm, ISO 6892-1.
+// The banner asks for the procedure first; picks the one whose name holds
+// every one of `words`.
+void chooseProcedure(QWidget *w, const QStringList &words)
+{
+    QVERIFY2(banner(w).contains("Choose the procedure"), qPrintable(banner(w)));
+    auto *proc = labelled<QComboBox>(w, "Procedure");
+    QVERIFY(proc);
+    int found = -1;
+    for (int i = 0; i < proc->count(); ++i) {
+        bool all = true;
+        for (const QString &word : words)
+            all = all && proc->itemText(i).contains(word);
+        if (all)
+            found = i;
+    }
+    QVERIFY2(found >= 0, qPrintable("no procedure named " + words.join(", ") + " offered"));
+    proc->setCurrentIndex(found);
+}
+
+// Follows the banner through ISO 6892-1 on the synthetic Ramberg-Osgood
+// curve: a rectangular 15.708 mm x 5 mm specimen (S0 78.54 mm2, the
+// fixture's), Le 50 mm.
 void followToAnalysis(tf::gui::MainWindow &w)
 {
-    QVERIFY2(banner(&w).contains("File > Open data"), qPrintable(banner(&w)));
     shot(&w, "1-start");
+    chooseProcedure(&w, {"ISO 6892-1"});
+    if (QTest::currentTestFailed())
+        return;
+    QVERIFY2(banner(&w).contains("File > Open data"), qPrintable(banner(&w)));
     QAbstractButton *open = button(&w, "Open data...");
     QVERIFY(open);
     answerFileDialog(fixture("synthetic/ro-continuous.csv"));
@@ -170,18 +216,9 @@ void followToAnalysis(tf::gui::MainWindow &w)
     QVERIFY(gauge);
     type(gauge, "50");
 
-    QVERIFY2(banner(&w).contains("Choose the procedure"), qPrintable(banner(&w)));
-    auto *proc = labelled<QComboBox>(&w, "Procedure");
-    QVERIFY(proc);
-    int iso = -1;
-    for (int i = 0; i < proc->count(); ++i)
-        if (proc->itemText(i).contains("ISO 6892-1"))
-            iso = i;
-    QVERIFY2(iso >= 0, "no ISO 6892-1 procedure offered");
-    proc->setCurrentIndex(iso);
-
     QVERIFY2(banner(&w).startsWith("Analysed"), qPrintable(banner(&w)));
     shot(&w, "3-analysed");
+    QVERIFY2(panelOverflow(&w).isEmpty(), qPrintable(panelOverflow(&w)));
 }
 
 } // namespace
@@ -205,12 +242,13 @@ private slots:
                  qPrintable(window.windowTitle()));
     }
 
-    void the_first_screen_says_to_open_a_file_and_where_results_will_appear()
+    void the_first_screen_asks_for_the_procedure_and_says_where_results_will_appear()
     {
         tf::gui::MainWindow window;
         window.show();
         QVERIFY(QTest::qWaitForWindowExposed(&window));
-        QVERIFY2(banner(&window).contains("Open a machine export"), qPrintable(banner(&window)));
+        QVERIFY2(banner(&window).contains("Choose the procedure"), qPrintable(banner(&window)));
+        QVERIFY2(banner(&window).contains("bending"), qPrintable(banner(&window)));
         QVERIFY(button(&window, "Open data..."));
         bool says = false;
         for (QLabel *l : window.findChildren<QLabel *>())
@@ -353,12 +391,108 @@ private slots:
             said = said || (l->isVisible() && l->text().contains("could not be opened"));
         QVERIFY(said);
         QVERIFY(!QApplication::activeModalWidget());
-        QVERIFY2(banner(&w).contains("Open a machine export"), qPrintable(banner(&w)));
+        // Nothing was taken in: the banner still asks for the first step.
+        QVERIFY2(banner(&w).contains("Choose the procedure"), qPrintable(banner(&w)));
+    }
+
+    // The Phase 3 walkthrough: a real four-point bending export from
+    // testXpert III (TU Braunschweig, CC BY 4.0), followed by the banner
+    // to testXpert's own modulus, and a report.
+    void bend_a_real_beam_and_export_a_report_following_the_screen()
+    {
+        QTemporaryDir tmp;
+        tf::gui::MainWindow w;
+        w.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&w));
+        chooseProcedure(&w, {"ISO 14125", "four-point"});
+        if (QTest::currentTestFailed())
+            return;
+        // A bend specimen is a rectangular beam: no shape to choose.
+        QVERIFY(!labelled<QComboBox>(&w, "Shape"));
+        QVERIFY(labelled<QLineEdit>(&w, "Support span L (mm)"));
+        QVERIFY(!labelled<QLineEdit>(&w, "Gauge length Le (mm)"));
+
+        QVERIFY2(banner(&w).contains("File > Open data"), qPrintable(banner(&w)));
+        answerFileDialog(fixture(
+            "braunschweig-14125/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cdry_reference_class3_1.CSV"));
+        QTest::mouseClick(button(&w, "Open data..."), Qt::LeftButton);
+
+        // testXpert writes no units; the banner asks for each.
+        QVERIFY2(banner(&w).contains("unit of the force column"), qPrintable(banner(&w)));
+        auto *forceUnit = labelled<QComboBox>(&w, "Force unit");
+        QVERIFY(forceUnit);
+        forceUnit->setCurrentIndex(forceUnit->findText("N"));
+        QVERIFY2(banner(&w).contains("unit of the deflection column"), qPrintable(banner(&w)));
+        auto *defUnit = labelled<QComboBox>(&w, "Deflection unit");
+        QVERIFY2(defUnit, "the displacement is not called the deflection in a bend test");
+        defUnit->setCurrentIndex(defUnit->findText("mm"));
+
+        // Width, thickness and span come from the file's header, and say so.
+        QCOMPARE(labelled<QLineEdit>(&w, "Width (mm)")->text(), QStringLiteral("14.85"));
+        QCOMPARE(labelled<QLineEdit>(&w, "Thickness (mm)")->text(), QStringLiteral("2.52"));
+        QCOMPARE(labelled<QLineEdit>(&w, "Support span L (mm)")->text(), QStringLiteral("45"));
+
+        QVERIFY2(banner(&w).contains("loading span"), qPrintable(banner(&w)));
+        type(labelled<QLineEdit>(&w, "Loading span (mm)"), "15");
+        QVERIFY2(banner(&w).contains("where the deflection was measured"), qPrintable(banner(&w)));
+        shot(&w, "bend-1-where");
+        auto *at = labelled<QComboBox>(&w, "Deflection measured at");
+        QVERIFY(at);
+        at->setCurrentIndex(at->findText("Loading points (crosshead)"));
+
+        QVERIFY2(banner(&w).startsWith("Analysed"), qPrintable(banner(&w)));
+        shot(&w, "bend-2-analysed");
+        QVERIFY2(panelOverflow(&w).isEmpty(), qPrintable(panelOverflow(&w)));
+        QTableWidget *t = resultsTable(&w);
+        QVERIFY(t);
+        // testXpert III printed 8.54 GPa and 174.162 MPa for this specimen.
+        QCOMPARE(cell(t, "Ef", 1), QStringLiteral("8.54"));
+        QCOMPARE(cell(t, "sigma_fM", 1), QStringLiteral("174.2"));
+
+        const QString html = tmp.path() + "/Ref_32.html";
+        answerFileDialog(html);
+        menuItem(&w, "File", "Export report...")->trigger();
+        const QString page = QString::fromUtf8(bytesOf(html));
+        QVERIFY(page.contains("Flexural test report"));
+        QVERIFY(page.contains("Support span L"));
+        QVERIFY(page.contains("the loading points"));
+        QVERIFY(page.contains("<td>8.54</td>"));
+        QVERIFY2(page.contains("loading-span-to-span"), "the fixture check is not in the report");
     }
 };
 
+// Headless however it is started. Run straight from a shell on a Wayland
+// desktop, Qt would take WAYLAND_DISPLAY and open every window on the
+// user's screen (it did, 2026-11-13, during this file's own negative
+// checks). So unless it is already on its private X server, the test
+// restarts itself under xvfb-run with Wayland cleared and software GL.
+// TF_WALKTHROUGH_ON_DESKTOP=1 is the one way to watch it on purpose.
+static void ensureHeadless(char *argv[])
+{
+    if (qEnvironmentVariableIsSet("TF_WALKTHROUGH_XVFB")
+        || qEnvironmentVariable("TF_WALKTHROUGH_ON_DESKTOP") == "1")
+        return;
+    qputenv("TF_WALKTHROUGH_XVFB", "1");
+    qputenv("QT_QPA_PLATFORM", "xcb");
+    qputenv("LIBGL_ALWAYS_SOFTWARE", "1");
+    qunsetenv("WAYLAND_DISPLAY");
+    std::vector<char *> args{const_cast<char *>("xvfb-run"), const_cast<char *>("-a"),
+                             const_cast<char *>("-s"),
+                             const_cast<char *>("-screen 0 1600x1000x24")};
+    for (char **a = argv; *a; ++a)
+        args.push_back(*a);
+    args.push_back(nullptr);
+    execvp("xvfb-run", args.data());
+    // Only reached when xvfb-run cannot be started: refuse rather than
+    // fall back to the desktop.
+    std::perror("walkthrough: cannot start xvfb-run (install xvfb, or set "
+                "TF_WALKTHROUGH_ON_DESKTOP=1 to run on your screen)");
+    std::exit(2);
+}
+
 int main(int argc, char *argv[])
 {
+    ensureHeadless(argv);
     // As in the application: VTK's widget needs its surface format set
     // before the QApplication exists.
     QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());

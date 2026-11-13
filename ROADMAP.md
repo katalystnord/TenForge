@@ -174,6 +174,18 @@ criteria met and verified by driving the real thing.
   epsilon_fM; D1621 foam set (Mendeley 2sp8fyvhfm).
 - Exit: Braunschweig results agree with testXpert within stated
   tolerances; release 0.2.
+- **Status, 2026-11-13: built; release 0.2 waits on David.** The 23
+  usable Braunschweig specimens agree with testXpert III in all 161
+  comparisons, each within half a unit of the last digit testXpert printed
+  (docs/validation/phase-3.md); two exports are excluded because their own
+  headers state a maximum their data never reach. Four-point deflection
+  is asked for (loading points or mid-span), since testXpert's crosshead
+  "Verformung" only reproduces at the loading points. Compliance tables,
+  the toe-compensating zero point, the bending kernel and ratio validity
+  checks are in; the window now asks for the procedure first. Not done:
+  a reference evaluation for compression (no open dataset with one found;
+  the D1621 foam set has raw curves only), ISO 14125 Annex B, ISO 844's
+  250 Pa fallback zero, specimen classes.
 
 ### Phase 4: Ecosystem exports (S to M)
 

@@ -19,9 +19,10 @@ class vtkContextView;
 
 namespace tf::gui {
 
-// The analysis window: open a machine export, say which columns are force
-// and extension, enter the specimen, choose a procedure, read the results,
-// export a report, save a record.
+// The analysis window: choose a procedure, open a machine export, say which
+// columns are force and displacement, enter the specimen and fixture, read
+// the results, export a report, save a record. Tension, compression and
+// bending: the procedure's mode decides which fields are shown.
 //
 // All state and every decision live in tf::core::Session; the window shows
 // it, writes the user's edits into it and asks it what to do next. The
@@ -54,12 +55,13 @@ private:
     QWidget *buildInputs();
     QWidget *buildOutputs();
     void showSession();      // session -> widgets, after a file or record is opened
-    void showShapeRows();    // the dimension rows the chosen shape needs
+    void showShapeRows();    // the rows the chosen shape and the procedure's mode need
     void readInputs();       // widgets -> session, after any edit
     void refresh();          // analyse and show the outcome
     void showChart();
     void showResults();
     void addUnlisted();
+    void chooseCompliance();
     QString chooseFile(bool save, const QString &caption, const QString &filter,
                        const QString &suggested);
     QString chartPng() const;  // the chart as a PNG data URI; empty if none
@@ -75,6 +77,9 @@ private:
     QComboBox *m_forceColumn = nullptr, *m_forceUnit = nullptr;
     QComboBox *m_extColumn = nullptr, *m_extUnit = nullptr;
     QLabel *m_readNotes = nullptr;
+    QFormLayout *m_dataForm = nullptr;
+    QPushButton *m_complianceButton = nullptr, *m_clearCompliance = nullptr;
+    QLabel *m_complianceFile = nullptr;
 
     QLineEdit *m_id = nullptr, *m_material = nullptr;
     QComboBox *m_shape = nullptr;
@@ -82,6 +87,8 @@ private:
     QLineEdit *m_width = nullptr, *m_thickness = nullptr, *m_diameter = nullptr;
     QLineEdit *m_outer = nullptr, *m_inner = nullptr, *m_area = nullptr;
     QLineEdit *m_gauge = nullptr;
+    QLineEdit *m_span = nullptr, *m_loadingSpan = nullptr;
+    QComboBox *m_deflectionAt = nullptr;
     QLabel *m_s0 = nullptr;
 
     QComboBox *m_profile = nullptr;

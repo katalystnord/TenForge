@@ -144,7 +144,7 @@ MainWindow::MainWindow(QWidget *parent)
     split->addWidget(buildInputs());
     split->addWidget(buildOutputs());
     split->setStretchFactor(1, 1);
-    split->setSizes({380, 820});
+    split->setSizes({420, 780});
     outer->addWidget(split, 1);
     setCentralWidget(central);
     resize(1200, 800);
@@ -160,14 +160,29 @@ QWidget *MainWindow::buildInputs()
     auto *inner = new QWidget;
     auto *v = new QVBoxLayout(inner);
 
-    // 1. Data
-    auto *data = new QGroupBox(tr("1. Data"));
+    // 1. Procedure: first, because its mode (tension, compression, bending)
+    // decides which fields below are needed.
+    auto *proc = new QGroupBox(tr("1. Procedure"));
+    auto *pf = new QFormLayout(proc);
+    m_profile = new QComboBox;
+    m_profile->setObjectName(QStringLiteral("profile"));
+    pf->addRow(tr("Procedure"), m_profile);
+    v->addWidget(proc);
+
+    // 2. Data
+    auto *data = new QGroupBox(tr("2. Data"));
     auto *df = new QFormLayout(data);
+    m_dataForm = df;
     auto *openBtn = new QPushButton(tr("Open data..."));
     openBtn->setObjectName(QStringLiteral("openData"));
     connect(openBtn, &QPushButton::clicked, this, &MainWindow::openData);
     m_file = wrapped(tr("No file open."), "fileName");
     df->addRow(openBtn);
+    // Machine software writes long file names without spaces, which a
+    // label cannot wrap; they must not widen the panel (seen on a testXpert
+    // export: the panel was cut off). Shown elided, in full as a tooltip.
+    m_file->setWordWrap(false);
+    m_file->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     df->addRow(m_file);
     m_forceColumn = new QComboBox;
     m_forceUnit = new QComboBox;
@@ -183,6 +198,7 @@ QWidget *MainWindow::buildInputs()
     df->addRow(tr("Extension unit"), m_extUnit);
     m_readNotes = wrapped({}, "readNotes");
     m_readNotes->setStyleSheet(QStringLiteral("color: palette(placeholder-text);"));
+    m_readNotes->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     df->addRow(m_readNotes);
     m_forceUnit->addItem(tr("Choose..."), QString());
     for (const QString &u : tf::core::knownUnits("force"))
@@ -190,10 +206,33 @@ QWidget *MainWindow::buildInputs()
     m_extUnit->addItem(tr("Choose..."), QString());
     for (const QString &u : tf::core::knownUnits("length") + tf::core::knownUnits("strain"))
         m_extUnit->addItem(u, u);
+    // Optional: the machine's own compliance, taken out of the displacement.
+    m_complianceButton = new QPushButton(tr("Machine compliance..."));
+    m_complianceButton->setObjectName(QStringLiteral("complianceButton"));
+    m_complianceButton->setToolTip(tr("Optional. A file of force against the machine's own "
+                                      "displacement, measured without a specimen."));
+    connect(m_complianceButton, &QPushButton::clicked, this, &MainWindow::chooseCompliance);
+    m_clearCompliance = new QPushButton(tr("None"));
+    m_clearCompliance->setObjectName(QStringLiteral("clearCompliance"));
+    connect(m_clearCompliance, &QPushButton::clicked, this, [this] {
+        m_session.setCompliance({});
+        showSession();
+        refresh();
+    });
+    m_complianceFile = wrapped(tr("Machine compliance: none"), "complianceFile");
+    m_complianceFile->setWordWrap(false);
+    m_complianceFile->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    auto *complianceRow = new QWidget;
+    auto *crow = new QHBoxLayout(complianceRow);
+    crow->setContentsMargins(0, 0, 0, 0);
+    crow->addWidget(m_complianceButton);
+    crow->addWidget(m_clearCompliance);
+    df->addRow(complianceRow);
+    df->addRow(m_complianceFile);
     v->addWidget(data);
 
-    // 2. Specimen
-    auto *spec = new QGroupBox(tr("2. Specimen"));
+    // 3. Specimen, and the fixture where the mode needs one
+    auto *spec = new QGroupBox(tr("3. Specimen"));
     auto *sf = new QFormLayout(spec);
     m_id = new QLineEdit;
     m_id->setObjectName(QStringLiteral("specimenId"));
@@ -209,7 +248,8 @@ QWidget *MainWindow::buildInputs()
     m_shape->addItem(tr("Cross-section area given"));
     sf->addRow(tr("Shape"), m_shape);
 
-    // One form, so every field lines up; the shape decides which rows show.
+    // One form, so every field lines up; the shape and mode decide which
+    // rows show.
     for (auto [label, edit, name] :
          {std::tuple{tr("Width (mm)"), &m_width, "width"},
           std::tuple{tr("Thickness (mm)"), &m_thickness, "thickness"},
@@ -224,40 +264,50 @@ QWidget *MainWindow::buildInputs()
     m_specForm = sf;
     m_s0 = wrapped({}, "s0");
     sf->addRow(tr("S0"), m_s0);
-    showShapeRows();
     m_gauge = new QLineEdit;
     m_gauge->setObjectName(QStringLiteral("gaugeLength"));
     sf->addRow(tr("Gauge length Le (mm)"), m_gauge);
+    m_span = new QLineEdit;
+    m_span->setObjectName(QStringLiteral("span"));
+    sf->addRow(tr("Support span L (mm)"), m_span);
+    m_loadingSpan = new QLineEdit;
+    m_loadingSpan->setObjectName(QStringLiteral("loadingSpan"));
+    sf->addRow(tr("Loading span (mm)"), m_loadingSpan);
+    m_deflectionAt = new QComboBox;
+    m_deflectionAt->setObjectName(QStringLiteral("deflectionAt"));
+    m_deflectionAt->addItem(tr("Choose..."), QString());
+    m_deflectionAt->addItem(tr("Loading points (crosshead)"), QStringLiteral("loading-points"));
+    m_deflectionAt->addItem(tr("Mid-span (deflectometer)"), QStringLiteral("mid-span"));
+    sf->addRow(tr("Deflection measured at"), m_deflectionAt);
+    showShapeRows();
     v->addWidget(spec);
-
-    // 3. Procedure
-    auto *proc = new QGroupBox(tr("3. Procedure"));
-    auto *pf = new QFormLayout(proc);
-    m_profile = new QComboBox;
-    m_profile->setObjectName(QStringLiteral("profile"));
-    pf->addRow(tr("Procedure"), m_profile);
-    v->addWidget(proc);
     v->addStretch(1);
 
     // Long column names and procedure titles must not widen the panel.
-    for (QComboBox *c : {m_forceColumn, m_extColumn, m_profile}) {
+    // Nothing in it may make the panel wider than it shows (the walkthrough
+    // checks): every list and label sizes down.
+    for (QComboBox *c : {m_forceColumn, m_extColumn, m_profile, m_forceUnit, m_extUnit,
+                         m_shape, m_deflectionAt}) {
         c->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-        c->setMinimumContentsLength(12);
+        c->setMinimumContentsLength(10);
     }
 
     // Every edit goes to the session and the outcome is redrawn.
-    for (QComboBox *c : {m_forceColumn, m_forceUnit, m_extColumn, m_extUnit})
+    for (QComboBox *c : {m_forceColumn, m_forceUnit, m_extColumn, m_extUnit, m_deflectionAt})
         connect(c, &QComboBox::currentIndexChanged, this, [this] { readInputs(); });
     connect(m_shape, &QComboBox::currentIndexChanged, this, [this] {
         showShapeRows();
         readInputs();
     });
     for (QLineEdit *e : {m_id, m_material, m_width, m_thickness, m_diameter, m_outer, m_inner,
-                         m_area, m_gauge})
+                         m_area, m_gauge, m_span, m_loadingSpan})
         connect(e, &QLineEdit::textChanged, this, [this] { readInputs(); });
     connect(m_profile, &QComboBox::currentIndexChanged, this, [this](int i) {
-        if (m_profile->itemData(i).toString() != QLatin1String(kProfileFile))
-            readInputs();
+        if (m_profile->itemData(i).toString() == QLatin1String(kProfileFile) || m_updating)
+            return;
+        m_session.profile = m_profile->itemData(i).toString();
+        showShapeRows();
+        readInputs();
     });
     connect(m_profile, &QComboBox::activated, this, [this](int i) {
         if (m_profile->itemData(i).toString() != QLatin1String(kProfileFile))
@@ -280,7 +330,7 @@ QWidget *MainWindow::buildInputs()
     scroll->setWidget(inner);
     scroll->setWidgetResizable(true);
     scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    scroll->setMinimumWidth(340);
+    scroll->setMinimumWidth(360);
     return scroll;
 }
 
@@ -358,11 +408,13 @@ void MainWindow::showSession()
 {
     m_updating = true;
     const auto *t = m_session.table();
-    m_file->setText(t ? QFileInfo(t->path).fileName() + (m_session.recordDir().isEmpty()
-                                                             ? QString()
-                                                             : tr(" (in the record %1)")
-                                                                   .arg(m_session.recordDir()))
-                      : tr("No file open."));
+    const QString fileText = t ? QFileInfo(t->path).fileName()
+                                     + (m_session.recordDir().isEmpty()
+                                            ? QString()
+                                            : tr(" (in the record %1)").arg(m_session.recordDir()))
+                               : tr("No file open.");
+    m_file->setToolTip(t ? t->path : QString());
+    m_file->setText(m_file->fontMetrics().elidedText(fileText, Qt::ElideMiddle, 320));
     for (QComboBox *c : {m_forceColumn, m_extColumn}) {
         c->clear();
         c->addItem(tr("Choose..."), QString());
@@ -390,6 +442,16 @@ void MainWindow::showSession()
     showValue(m_inner, s.innerDiameter, 1e3);
     showValue(m_area, s.area, 1e6);
     showValue(m_gauge, s.gaugeLength, 1e3);
+    showValue(m_span, m_session.fixture.span, 1e3);
+    showValue(m_loadingSpan, m_session.fixture.loadingSpan, 1e3);
+    select(m_deflectionAt, !m_session.fixture.deflectionAt ? QString()
+                           : *m_session.fixture.deflectionAt == tf::core::Fixture::DeflectionAt::Midspan
+                               ? QStringLiteral("mid-span")
+                               : QStringLiteral("loading-points"));
+    m_complianceFile->setText(tr("Machine compliance: %1")
+                                  .arg(m_session.compliance().isEmpty()
+                                           ? tr("none")
+                                           : QFileInfo(m_session.compliance()).fileName()));
 
     m_profile->clear();
     m_profile->addItem(tr("Choose a procedure..."), QString());
@@ -402,6 +464,7 @@ void MainWindow::showSession()
                            m_profileFile);
     m_profile->addItem(tr("A profile file..."), QString::fromLatin1(kProfileFile));
     select(m_profile, m_session.profile);
+    showShapeRows();
 
     m_notices->setText(m_session.notices().join("\n"));
     m_notices->setVisible(!m_session.notices().isEmpty());
@@ -411,16 +474,48 @@ void MainWindow::showSession()
 
 void MainWindow::showShapeRows()
 {
+    const QString mode = m_session.mode();
+    const bool bend = mode == "flexure";
+    const bool four = m_session.fixtureKind() == "four-point";
+    // A bend specimen is a rectangular beam; the shape is not a choice.
+    if (bend && m_shape->currentIndex() != int(Specimen::Shape::Rectangular)) {
+        const bool was = m_updating;
+        m_updating = true;
+        m_shape->setCurrentIndex(int(Specimen::Shape::Rectangular));
+        m_updating = was;
+    }
     const auto shape = Specimen::Shape(m_shape->currentIndex());
-    const std::map<QLineEdit *, bool> rows{
+    const std::map<QWidget *, bool> rows{
+        {m_shape, !bend},
         {m_width, shape == Specimen::Shape::Rectangular},
         {m_thickness, shape == Specimen::Shape::Rectangular},
-        {m_diameter, shape == Specimen::Shape::Round},
-        {m_outer, shape == Specimen::Shape::Tube},
-        {m_inner, shape == Specimen::Shape::Tube},
-        {m_area, shape == Specimen::Shape::GivenArea}};
-    for (const auto &[edit, on] : rows)
-        m_specForm->setRowVisible(edit, on);
+        {m_diameter, !bend && shape == Specimen::Shape::Round},
+        {m_outer, !bend && shape == Specimen::Shape::Tube},
+        {m_inner, !bend && shape == Specimen::Shape::Tube},
+        {m_area, !bend && shape == Specimen::Shape::GivenArea},
+        {m_s0, !bend},
+        {m_gauge, !bend},
+        {m_span, bend},
+        {m_loadingSpan, bend && four},
+        {m_deflectionAt, bend && four}};
+    for (const auto &[w, on] : rows)
+        m_specForm->setRowVisible(w, on);
+
+    // The words follow the mode: a bend test has a deflection, a
+    // compression test a deformation measured over a length L0.
+    const QString word = m_session.displacementWord();
+    const QString Word = word.left(1).toUpper() + word.mid(1);
+    if (auto *l = qobject_cast<QLabel *>(m_dataForm->labelForField(m_extColumn)))
+        l->setText(tr("%1 column").arg(Word));
+    if (auto *l = qobject_cast<QLabel *>(m_dataForm->labelForField(m_extUnit)))
+        l->setText(tr("%1 unit").arg(Word));
+    if (auto *l = qobject_cast<QLabel *>(m_specForm->labelForField(m_gauge)))
+        l->setText(mode == "compression" ? tr("Height or gauge length L0 (mm)")
+                                         : tr("Gauge length Le (mm)"));
+    // Compliance applies to a displacement in compression and bending.
+    const bool curveMode = mode == "compression" || bend;
+    m_dataForm->setRowVisible(m_complianceButton->parentWidget(), curveMode);
+    m_dataForm->setRowVisible(m_complianceFile, curveMode);
 }
 
 void MainWindow::readInputs()
@@ -444,6 +539,13 @@ void MainWindow::readInputs()
     s.innerDiameter = parsed(m_inner, 1e-3);
     s.area = parsed(m_area, 1e-6);
     s.gaugeLength = parsed(m_gauge, 1e-3);
+    auto &f = m_session.fixture;
+    f.span = parsed(m_span, 1e-3);
+    f.loadingSpan = parsed(m_loadingSpan, 1e-3);
+    const QString at = m_deflectionAt->currentData().toString();
+    f.deflectionAt = at == "mid-span"         ? std::optional(tf::core::Fixture::DeflectionAt::Midspan)
+                     : at == "loading-points" ? std::optional(tf::core::Fixture::DeflectionAt::LoadingPoints)
+                                              : std::nullopt;
 
     const QString p = m_profile->currentData().toString();
     if (p != QLatin1String(kProfileFile))
@@ -461,7 +563,9 @@ void MainWindow::refresh()
     const std::map<QString, QWidget *> fields{
         {"forceColumn", m_forceColumn}, {"forceUnit", m_forceUnit},
         {"extensionColumn", m_extColumn}, {"extensionUnit", m_extUnit},
-        {"gaugeLength", m_gauge}, {"profile", m_profile}};
+        {"gaugeLength", m_gauge}, {"profile", m_profile}, {"span", m_span},
+        {"loadingSpan", m_loadingSpan}, {"deflectionAt", m_deflectionAt},
+        {"compliance", m_complianceButton}};
     const QString wanted = QStringLiteral("border: 2px solid #d08000;");
     for (const auto &[name, w] : fields)
         w->setStyleSheet(name == step.field ? wanted : QString());
@@ -497,8 +601,9 @@ void MainWindow::showResults()
     QStringList reasons;
     for (const QJsonValue &r : conf.value("reasons").toArray()) {
         QString d = r.toObject().value("detail").toString();
-        const int colon = d.indexOf(": results.");
-        reasons << (colon > 0 ? d.left(colon) + "." : d);
+        const QString marker = "standard's text: ";
+        const int at = d.indexOf(marker);
+        reasons << (at > 0 ? d.left(at + int(marker.size()) - 2) + "." : d);
     }
     m_conformity->setText(
         conf.value("status").toString() == "to-standard"
@@ -536,16 +641,22 @@ void MainWindow::showResults()
 void MainWindow::showChart()
 {
     m_chartXY->ClearPlots();
+    const QString mode = m_session.mode();
+    m_chartXY->GetAxis(vtkAxis::BOTTOM)->SetTitle(mode == "flexure"       ? "Flexural strain (%)"
+                                                  : mode == "compression" ? "Compressive strain (%)"
+                                                                          : "Strain (%)");
+    m_chartXY->GetAxis(vtkAxis::LEFT)->SetTitle(mode == "flexure"       ? "Flexural stress (MPa)"
+                                                : mode == "compression" ? "Compressive stress (MPa)"
+                                                                        : "Stress (MPa)");
     const auto &a = m_session.analysis();
     if (a) {
-        const auto &in = a->imported.input;
         vtkNew<vtkTable> curve;
         vtkNew<vtkDoubleArray> x, y;
         x->SetName("Strain (%)");
         y->SetName("Stress (MPa)");
-        for (std::size_t i = 0; i < in.force.size(); ++i) {
-            const double e = in.extension[i] / in.gaugeLength * 100.0;
-            const double s = in.force[i] / in.area * 1e-6;
+        for (std::size_t i = 0; i < a->stress.size(); ++i) {
+            const double e = a->strain[i] * 100.0;
+            const double s = a->stress[i] * 1e-6;
             if (std::isfinite(e) && std::isfinite(s)) {
                 x->InsertNextValue(e);
                 y->InsertNextValue(s);
@@ -559,17 +670,21 @@ void MainWindow::showChart()
         line->SetWidth(1.5);
         line->SetLabel("Curve");
 
-        // The elastic line of E, from zero stress to the top of its window.
-        const auto eIt = a->result.results.find("E");
-        if (eIt != a->result.results.end() && eIt->second.determined && eIt->second.fit) {
-            const auto &f = *eIt->second.fit;
+        // The modulus line, from zero stress to near the top of the curve.
+        for (const auto &pr : a->profile.results) {
+            if (pr.primitive != "linear-fit" && pr.primitive != "max-slope")
+                continue;
+            const auto it = a->result.results.find(pr.key.toStdString());
+            if (it == a->result.results.end() || !it->second.determined || !it->second.fit)
+                continue;
+            const auto &f = *it->second.fit;
             double top = 0;
             for (vtkIdType i = 0; i < y->GetNumberOfTuples(); ++i)
                 top = std::max(top, y->GetValue(i));
             vtkNew<vtkTable> el;
             vtkNew<vtkDoubleArray> ex, ey;
             ex->SetName("x");
-            ey->SetName("E");
+            ey->SetName(pr.id.toUtf8().constData());
             for (double s : {0.0, 0.9 * top}) {
                 ex->InsertNextValue((s * 1e6 - f.intercept) / f.slope * 100.0);
                 ey->InsertNextValue(s);
@@ -580,14 +695,15 @@ void MainWindow::showChart()
             p->SetInputData(el, 0, 1);
             p->SetColor(150, 150, 150, 255);
             p->GetPen()->SetLineType(vtkPen::DASH_LINE);
-            p->SetLabel("Elastic line (E)");
+            p->SetLabel(QString("Elastic line (%1)").arg(pr.id).toStdString());
+            break;
         }
 
         // Each stress result where the engine found it on the curve.
         for (const auto &pr : a->profile.results) {
-            const auto it = a->result.results.find(pr.quantity.toStdString());
+            const auto it = a->result.results.find(pr.key.toStdString());
             if (it == a->result.results.end() || !it->second.determined || it->second.unit != "Pa"
-                || !it->second.point || pr.quantity == "E")
+                || !it->second.point || it->second.fit)
                 continue;
             vtkNew<vtkTable> pt;
             vtkNew<vtkDoubleArray> px, py;
@@ -697,10 +813,15 @@ void MainWindow::exportReport()
         if (!img.isNull())
             doc.addResource(QTextDocument::ImageResource, QUrl("chart.png"), img);
         doc.setHtml(tf::core::reportHtml(a->doc, m_session.specimen,
-                                         img.isNull() ? QString() : QStringLiteral("chart.png")));
+                                         img.isNull() ? QString() : QStringLiteral("chart.png"),
+                                         m_session.fixture));
         QPdfWriter pdf(path);
         pdf.setPageSize(QPageSize(QPageSize::A4));
-        pdf.setTitle(tr("Tensile test %1").arg(m_session.specimen.id));
+        pdf.setTitle(tr("%1 test %2")
+                         .arg(a->profile.mode == "flexure"       ? tr("Flexural")
+                              : a->profile.mode == "compression" ? tr("Compression")
+                                                                 : tr("Tensile"),
+                              m_session.specimen.id));
         pdf.setCreator(tf::core::applicationName() + " " + tf::core::applicationVersion());
         doc.print(&pdf);
         if (!QFileInfo(path).exists() || QFileInfo(path).size() == 0)
@@ -708,7 +829,8 @@ void MainWindow::exportReport()
     } else {
         QFile f(path);
         if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-            f.write(tf::core::reportHtml(a->doc, m_session.specimen, chartPng()).toUtf8());
+            f.write(tf::core::reportHtml(a->doc, m_session.specimen, chartPng(), m_session.fixture)
+                        .toUtf8());
         else
             error = f.errorString();
     }
@@ -718,6 +840,22 @@ void MainWindow::exportReport()
         return;
     }
     statusBar()->showMessage(tr("Report written to %1").arg(path));
+}
+
+void MainWindow::chooseCompliance()
+{
+    const QString path = chooseFile(false, tr("Choose the machine's compliance table"),
+                                    tr("Tables (*.csv *.txt *.tsv *.dat);;All files (*)"), {});
+    if (path.isEmpty())
+        return;
+    const QString err = m_session.setCompliance(path);
+    if (!err.isEmpty()) {
+        m_notices->setText(tr("%1 cannot be used: %2").arg(QFileInfo(path).fileName(), err));
+        m_notices->setVisible(true);
+        return;
+    }
+    showSession();
+    refresh();
 }
 
 void MainWindow::addUnlisted()
