@@ -197,4 +197,167 @@ TF_CASE(deflection_and_crosshead_columns_are_recognised)
     TF_CHECK(why.contains("2"));
 }
 
+// --- Instron's exports (tests/fixtures/instron/SOURCE.md) -----------------------
+// Real files from Bluehill 2/3, Bluehill Universal and Merlin, one per
+// dialect, each with a property checked by hand against its own data.
+
+static QString instron(const char *name) { return fixture((std::string("instron/") + name).c_str()); }
+
+static bool hasPreambleKey(const Table &t, const QString &key)
+{
+    for (const auto &p : t.preamble)
+        if (p.key == key)
+            return true;
+    return false;
+}
+
+TF_CASE(bluehill_flexure_export_reads_imperial_units_and_its_header_result)
+{
+    // Bluehill's header: "Maximum Load : Maximum Load","131.18347",lbf and
+    // the extension there, 1.50294 in. Its curve's maximum is that row.
+    const auto r = readTable(instron("bluehill2-flexure.csv"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.names == QStringList({"Time", "Extension", "Load"}));
+    TF_CHECK(t.units == QStringList({"s", "in", "lbf"}));
+    TF_CHECK(guessForceColumn(t) == "Load");
+    TF_CHECK(guessExtensionColumn(t) == "Extension");
+    // A key is found behind Bluehill's "Section : " prefix.
+    TF_NEAR(preambleQuantity(t, {"Maximum Load"}, "force").value_or(NAN), 131.18347 * 4.4482216152605,
+            1e-9);
+
+    TensionMapping m;
+    m.needsGeometry = false;
+    const auto imp = toTension(t, m);
+    TF_REQUIRE(imp.error.isEmpty());
+    std::size_t k = 0;
+    for (std::size_t i = 0; i < imp.input.force.size(); ++i)
+        if (imp.input.force[i] > imp.input.force[k])
+            k = i;
+    TF_NEAR(imp.input.force[k], 131.18347 * 4.4482216152605, 1e-9);
+    TF_NEAR(imp.input.extension[k], 1.50294 * 0.0254, 1e-12);
+}
+
+TF_CASE(bluehill_universal_results_table_is_kept_as_the_files_own_results)
+{
+    const auto r = readTable(instron("bluehill-universal-results.csv"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    auto find = [&](const QString &name) -> const FileResult * {
+        for (const FileResult &f : t.results)
+            if (f.name == name)
+                return &f;
+        return nullptr;
+    };
+    const FileResult *fm = find("Maximum Force");
+    TF_REQUIRE(fm != nullptr);
+    TF_CHECK(fm->table == "Results Table 1");
+    TF_CHECK(fm->row == "1");
+    TF_CHECK(fm->unit == "N");
+    TF_CHECK(fm->value == "285.30");
+    const FileResult *e = find("Modulus (Automatic Young's)");
+    TF_REQUIRE(e != nullptr);
+    TF_CHECK(e->unit == "MPa" && e->value == "143.72");
+    const FileResult *nu = find("Poisson's ratio (Chord)");
+    TF_REQUIRE(nu != nullptr);
+    TF_CHECK(nu->value == "-----");  // kept as written: not a number, not a zero
+    TF_NEAR(fileResultQuantity(t, {"Maximum Force"}, "force").value_or(NAN), 285.30, 1e-9);
+    TF_CHECK(!fileResultQuantity(t, {"Poisson's ratio (Chord)"}, "strain"));
+
+    // The results row is not header data, and the curve below is read whole.
+    TF_CHECK(!hasPreambleKey(t, "1"));
+    TF_CHECK(t.names == QStringList({"Time", "Displacement", "Force", "Tensile displacement",
+                                     "Tensile strain (Displacement)", "Tensile stress"}));
+    TF_CHECK(t.units == QStringList({"s", "mm", "kN", "mm", "%", "MPa"}));
+    // Bluehill's leading column is empty in every row: left out, and said.
+    TF_CHECK(!t.notes.filter("empty").isEmpty());
+    TF_CHECK(t.columns[0].size() == 340);
+    // Bluehill's maximum force is on the curve: 0.2853 kN at 6.74 s.
+    std::size_t k = 0;
+    for (std::size_t i = 0; i < t.columns[2].size(); ++i)
+        if (t.columns[2][i] > t.columns[2][k])
+            k = i;
+    TF_NEAR(t.columns[2][k], 0.2853, 1e-12);
+    TF_NEAR(t.columns[0][k], 6.74, 1e-12);
+}
+
+TF_CASE(bluehill_universal_header_with_the_unit_before_the_value)
+{
+    // "Specimen properties : Width,(in),"0.39"": unit, then value.
+    const auto r = readTable(instron("bluehill-universal-composite.csv"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_NEAR(preambleQuantity(t, {"Width"}, "length").value_or(NAN), 0.39 * 0.0254, 1e-12);
+    TF_NEAR(preambleQuantity(t, {"Thickness"}, "length").value_or(NAN), 0.04 * 0.0254, 1e-12);
+    TF_NEAR(fileResultQuantity(t, {"Area"}, "area").value_or(NAN), 30.42e-6, 1e-15);
+    TF_CHECK(t.names == QStringList({"Time", "Displacement", "Force", "Bonded Strain Gage",
+                                     "Tensile stress"}));
+    TF_CHECK(t.columns[0].size() == 3682);
+}
+
+TF_CASE(italian_bluehill_export_is_read_by_its_column_names)
+{
+    const auto r = readTable(instron("bluehill2-italian.csv"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.delimiter == ';');
+    TF_CHECK(t.decimal == '.');
+    TF_CHECK(t.names == QStringList({"Tempo", "Corsa", "Carico"}));
+    TF_CHECK(guessForceColumn(t) == "Carico");
+    TF_CHECK(guessExtensionColumn(t) == "Corsa");
+}
+
+TF_CASE(merlin_export_states_units_inside_its_column_names)
+{
+    const auto r = readTable(instron("merlin-compression.raw"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(columnUnit(t, "Time sec") == "sec");
+    TF_CHECK(columnUnit(t, "Extension mm") == "mm");
+    TF_CHECK(columnUnit(t, "Load N") == "N");
+    TF_CHECK(columnUnit(t, "Strain [Exten.] %") == "%");
+    TF_CHECK(columnUnit(t, "Cycle Count").isEmpty());
+    TF_CHECK(guessForceColumn(t) == "Load N");
+    // "Area:",9.677400,"mm*mm"
+    TF_NEAR(preambleQuantity(t, {"Area"}, "area").value_or(NAN), 9.6774e-6, 1e-15);
+    TensionMapping m;
+    m.force = "Load N";
+    m.extension = "Extension mm";
+    m.needsGeometry = false;
+    const auto imp = toTension(t, m);
+    TF_REQUIRE(imp.error.isEmpty());
+    TF_CHECK(imp.forceUnit == "N" && imp.extensionUnit == "mm");
+    TF_NEAR(imp.input.force[0], -2.130933, 1e-12);
+}
+
+TF_CASE(bluehill_dimension_header_gives_the_area)
+{
+    const auto r = readTable(instron("bluehill2-dimensions.csv"));
+    TF_REQUIRE(r.table.has_value());
+    TF_NEAR(preambleQuantity(*r.table, {"Area"}, "area").value_or(NAN), 181.1716e-6, 1e-15);
+}
+
+TF_CASE(force_and_displacement_names_in_other_languages_are_recognised)
+{
+    const std::vector<std::pair<const char *, const char *>> pairs{
+        {"Carico", "Allungamento"}, {"Forza", "Deformazione"}, {"Fuerza", "Alargamiento"},
+        {"Carga", "Deformación"},   {"Força", "Deformação"}};
+    for (const auto &[f, e] : pairs) {
+        Table t;
+        t.names = {"time", QString::fromUtf8(f), QString::fromUtf8(e)};
+        if (guessForceColumn(t) != QString::fromUtf8(f))
+            tf::test::fail(__FILE__, __LINE__, std::string("force not found: ") + f);
+        if (guessExtensionColumn(t) != QString::fromUtf8(e))
+            tf::test::fail(__FILE__, __LINE__, std::string("extension not found: ") + e);
+    }
+    // A crosshead in Italian, Spanish and Portuguese counts only when nothing
+    // better is there.
+    for (const char *c : {"Corsa", "Desplazamiento", "Deslocamento"}) {
+        Table t;
+        t.names = {"time", c, "Carico"};
+        if (guessExtensionColumn(t) != c)
+            tf::test::fail(__FILE__, __LINE__, std::string("crosshead not found: ") + c);
+    }
+}
+
 int main() { return tf::test::run(); }

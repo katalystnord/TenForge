@@ -64,6 +64,7 @@ QString Session::openData(const QString &path)
     modulusWindow.reset();
     curveNotes.clear();
     references.clear();
+    m_notes << m_table->notes;
 
     QString why;
     mapping.forceColumn = guessForceColumn(*m_table, &why);
@@ -84,11 +85,29 @@ QString Session::openData(const QString &path)
     }
 
     QString key;
-    if (const auto a = preambleQuantity(*m_table, {"So", "S0", "So [mm2]"}, "area", &key)) {
+    if (const auto a = preambleQuantity(*m_table, {"So", "S0", "So [mm2]", "Area"}, "area", &key)) {
         specimen.shape = Specimen::Shape::GivenArea;
         specimen.area = *a;
         m_notes << "cross-section area " + key + " = " + QString::number(*a * 1e6, 'g', 8)
                        + " mm2, as the file states";
+    }
+    // The area the machine's software used, from its own results table
+    // (Bluehill). Its header may hold the method's default dimensions
+    // instead of the specimen's; when they disagree, say so.
+    const FileResult *fr = nullptr;
+    if (!specimen.area) {
+        if (const auto a = fileResultQuantity(*m_table, {"Area"}, "area", &fr)) {
+            specimen.shape = Specimen::Shape::GivenArea;
+            specimen.area = *a;
+            m_notes << "cross-section area = " + fr->value + " " + fr->unit + ", from the file's "
+                           + fr->table + " (the area its software used)";
+            const auto w = preambleQuantity(*m_table, {"Width"}, "length");
+            const auto h = preambleQuantity(*m_table, {"Thickness"}, "length");
+            if (w && h && std::fabs(*w * *h - *a) > 0.01 * *a)
+                m_notes << "the file's header gives width " + mm(*w) + " mm and thickness " + mm(*h)
+                               + " mm (" + QString::number(*w * *h * 1e6, 'g', 4)
+                               + " mm2), which do not match that area; the area is used";
+        }
     }
     // Width, thickness and span as machine software states them (ZwickRoell
     // testXpert writes German keys). A cross-section S0 stated outright
@@ -587,6 +606,15 @@ bool Session::analyse()
                         {m_table->path, QString::fromLatin1(m_table->sha256),
                          a.imported.forceColumn, a.imported.extensionColumn, notes},
                         QDateTime::currentDateTimeUtc(), validity(a.profile));
+    if (!m_table->results.empty()) {
+        // The machine software's own results, as written: shown beside
+        // TenForge's, never used by the analysis, never converted.
+        QJsonArray own;
+        for (const FileResult &r : m_table->results)
+            own.append(QJsonObject{{"table", r.table}, {"row", r.row}, {"name", r.name},
+                                   {"unit", r.unit}, {"value", r.value}});
+        a.doc["source_results"] = own;
+    }
     if (!references.empty()) {
         QJsonArray refs;
         for (const ReferenceCurve &r : references)

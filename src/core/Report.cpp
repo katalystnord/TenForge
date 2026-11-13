@@ -144,6 +144,23 @@ QString reportHtml(const QJsonObject &doc, const Specimen &sp, const QString &ch
     }
     h += "</table>\n";
 
+    const QJsonArray own = doc.value("source_results").toArray();
+    if (!own.isEmpty()) {
+        h += "<h2>Results in the file, from its own software</h2>\n"
+             "<p>As the machine's software wrote them into the data file: not TenForge's, "
+             "not checked by TenForge, and not used by its analysis.</p>\n"
+             "<table width=\"100%\">\n<tr><th width=\"34%\">Result</th><th>Value</th>"
+             "<th>Unit</th><th>Where</th></tr>\n";
+        for (const QJsonValue &v : own) {
+            const QJsonObject r = v.toObject();
+            h += "<tr><td>" + esc(r.value("name").toString()) + "</td><td>"
+                 + esc(r.value("value").toString()) + "</td><td>" + esc(r.value("unit").toString())
+                 + "</td><td>" + esc(r.value("table").toString()) + ", row "
+                 + esc(r.value("row").toString()) + "</td></tr>\n";
+        }
+        h += "</table>\n";
+    }
+
     const QJsonArray flags = doc.value("flags").toArray();
     if (!flags.isEmpty()) {
         h += "<h2>Flags</h2>\n<ul>\n";

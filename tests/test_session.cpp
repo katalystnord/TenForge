@@ -459,4 +459,48 @@ TF_CASE(a_real_foam_export_is_analysed_from_its_own_columns)
     TF_CHECK(s.analysis()->result.strainOrigin >= 0);
 }
 
+TF_CASE(the_area_in_a_files_results_table_wins_over_header_dimensions_that_disagree)
+{
+    // Bluehill Universal (tests/fixtures/instron): the header's width and
+    // thickness (0.39 in x 0.04 in = 10.06 mm2) are the method's defaults;
+    // the results table holds the area Bluehill used, 30.42 mm2.
+    Session s;
+    s.profile = "iso-527-1-2019";
+    TF_REQUIRE(s.openData(fixture("instron/bluehill-universal-composite.csv")).isEmpty());
+    TF_CHECK(s.specimen.shape == Specimen::Shape::GivenArea);
+    TF_NEAR(s.specimen.area.value_or(NAN), 30.42e-6, 1e-15);
+    TF_CHECK(!s.notes().filter("30.42").isEmpty());
+    TF_CHECK(!s.notes().filter("do not match").isEmpty());
+}
+
+TF_CASE(an_area_behind_a_section_prefix_is_taken_from_the_header)
+{
+    // Bluehill 2/3: "Dimension : Area,"181.17160",mm^2".
+    Session s;
+    s.profile = "iso-604-2002";
+    TF_REQUIRE(s.openData(fixture("instron/bluehill2-dimensions.csv")).isEmpty());
+    TF_NEAR(s.specimen.area.value_or(NAN), 181.1716e-6, 1e-15);
+}
+
+TF_CASE(the_files_own_results_travel_with_the_analysis_as_written)
+{
+    Session s;
+    s.profile = "iso-527-1-2019";
+    TF_REQUIRE(s.openData(fixture("instron/bluehill-universal-results.csv")).isEmpty());
+    s.specimen.shape = Specimen::Shape::GivenArea;
+    s.specimen.area = 122.5e-6;
+    TF_REQUIRE(s.analyse());
+    const QJsonArray own = s.analysis()->doc.value("source_results").toArray();
+    TF_REQUIRE(own.size() == 8);
+    const QJsonObject fm = own.at(0).toObject();
+    TF_CHECK(fm.value("table").toString() == "Results Table 1");
+    TF_CHECK(fm.value("row").toString() == "1");
+    TF_CHECK(fm.value("name").toString() == "Maximum Force");
+    TF_CHECK(fm.value("unit").toString() == "N");
+    TF_CHECK(fm.value("value").toString() == "285.30");
+    // Never among TenForge's own results.
+    for (const QJsonValue &v : s.analysis()->doc.value("results").toArray())
+        TF_CHECK(v.toObject().value("id").toString() != "Maximum Force");
+}
+
 int main() { return tf::test::run(); }

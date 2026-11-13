@@ -94,6 +94,20 @@
 #     left out, red (a_reference_curve_is_read_in_si_without_its_gaps).
 #   NOT recorded: a deliberate break of
 #   freecad_loads_the_card_and_calculix_runs_the_yield_points.
+#
+# NEGATIVE CHECKS, 2026-11-13, machine exports (Instron):
+#   - import_machine_exports, 7 Instron cases: written first, red against
+#     stubs (each for its own reason: no results table, keys behind a
+#     section prefix, unit before value, units in names, Italian names).
+#   - analysis_session_guides_and_analyses, 3 cases (area from the results
+#     table and the mismatch note, area behind a prefix, source_results):
+#     red against stubs. report_carries_results_conformity_and_provenance,
+#     the file's own results section: red against the stub.
+#   - main_window_walkthrough, Instron case: written after the code, so
+#     broken instead: the window's section for the file's own results
+#     switched off, red.
+#   Considered and rejected as validation: Bluehill's tensile strength on
+#   six composite specimens (tests/fixtures/instron/SOURCE.md says why).
 
 # --- The engine stands alone ------------------------------------------------
 # Every public header of tf_analysis, included into one translation unit and

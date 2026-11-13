@@ -139,6 +139,13 @@ and bending, with what is not yet validated).
   [doi:10.17632/2sp8fyvhfm.3](https://doi.org/10.17632/2sp8fyvhfm.3),
   CC BY 4.0. One test and its dimensions included unchanged in
   `tests/fixtures/puf-d1621/`.
+- Instron exports, one per dialect, included unchanged in
+  `tests/fixtures/instron/` (sources, licences and MIT notices in its
+  `SOURCE.md`): UML Applied Solid Mechanics Lab (LGPL-2.1); Aryan Senthil,
+  Javier Linero and henryflushman (MIT); Signorini, C., Nobili, A.,
+  Sola, A., Messori, M. (2019), [doi:10.17632/kbg7dz3yhx.3](https://doi.org/10.17632/kbg7dz3yhx.3),
+  CC BY 4.0; Hong, C. (2020), [doi:10.6084/m9.figshare.13345313.v1](https://doi.org/10.6084/m9.figshare.13345313.v1),
+  CC BY 4.0.
 
 See [NOTICE](NOTICE).
 

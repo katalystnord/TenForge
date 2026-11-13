@@ -143,3 +143,17 @@ SHA-256. Specified with Phase 2, when the GUI first handles series.
 - **`analysis_choices`** (when the user moved the modulus window): as in
   test-record-v1, section 10. The conformity reasons then include
   `user-modulus-window`, naming the window.
+
+## 7. Addition after release 0.3 (machine exports; additive, for David's review)
+
+- **`source_results`**: results the machine's own software wrote into the
+  data file (Instron Bluehill's "Results Table"), when it has any. One
+  object per value, `{"table", "row", "name", "unit", "value"}`, every
+  field a string exactly as written ("285.30", "-----"), the unit with its
+  brackets removed. They are the file's, not TenForge's: never converted,
+  never checked, never used by the analysis, and never among `results`.
+  The report and the window show them in their own section, saying so.
+- The area the file's software used, from such a table (`Area`), is taken
+  as the cross-section when the file states no S0, with a note in
+  `source.notes`; when the file's header gives a width and thickness that
+  do not match it within 1 %, a note says that too.

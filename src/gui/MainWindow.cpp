@@ -693,6 +693,7 @@ void MainWindow::showResults()
     const auto &a = m_session.analysis();
     m_emptyState->setVisible(!a);
     m_conformity->setVisible(bool(a));
+    m_results->clearSpans();
     m_results->setRowCount(0);
     m_flags->clear();
     if (!a)
@@ -731,6 +732,30 @@ void MainWindow::showResults()
                            new QTableWidgetItem(det ? r.value("name").toString()
                                                     : tr("not determined: %1")
                                                           .arg(r.value("reason").toString())));
+    }
+    // The machine software's own results, below TenForge's and set apart:
+    // as written, not checked, not used.
+    const QJsonArray own = a->doc.value("source_results").toArray();
+    if (!own.isEmpty()) {
+        const int head = m_results->rowCount();
+        m_results->insertRow(head);
+        auto *h = new QTableWidgetItem(
+            tr("In the file, from its own software (as written; not TenForge's, not checked):"));
+        QFont f = h->font();
+        f.setItalic(true);
+        h->setFont(f);
+        m_results->setItem(head, 0, h);
+        m_results->setSpan(head, 0, 1, 4);
+        for (const QJsonValue &v : own) {
+            const QJsonObject r = v.toObject();
+            const int row = m_results->rowCount();
+            m_results->insertRow(row);
+            m_results->setItem(row, 0, new QTableWidgetItem(r.value("name").toString()));
+            m_results->setItem(row, 1, new QTableWidgetItem(r.value("value").toString()));
+            m_results->setItem(row, 2, new QTableWidgetItem(r.value("unit").toString()));
+            m_results->setItem(row, 3, new QTableWidgetItem(r.value("table").toString() + tr(", row ")
+                                                            + r.value("row").toString()));
+        }
     }
     m_results->resizeColumnsToContents();
     m_results->resizeRowsToContents();

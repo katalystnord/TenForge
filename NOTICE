@@ -31,6 +31,32 @@ tests/fixtures/puf-d1621/*
     Two files (one test and its batch's dimensions), unchanged. Used as
     test data for the importer and the ISO 844 profile.
 
+tests/fixtures/instron/*
+    Six raw exports from Instron's software, unchanged, one per dialect,
+    used as test data for the importer and the window. Sources, licences
+    and SHA-256 in tests/fixtures/instron/SOURCE.md, which also carries the
+    MIT notices:
+    - bluehill2-flexure.csv: UML Applied Solid Mechanics Lab,
+      github.com/UML-AppliedSolidMechanicsLab/TensileDataAnalysis,
+      LGPL-2.1.
+    - bluehill2-dimensions.csv: Aryan Senthil,
+      github.com/AryanSenthil/Contact-Detection, MIT
+      (Copyright (c) 2025 AryanSenthil).
+    - bluehill-universal-results.csv: Javier Linero,
+      github.com/javierlinero/gradient-optimized-joints, MIT
+      (Copyright (c) 2024 Javier Linero).
+    - bluehill-universal-composite.csv: henryflushman,
+      github.com/henryflushman/AERO, MIT
+      (Copyright (c) 2026 henryflushman).
+    - bluehill2-italian.csv: Signorini, C., Nobili, A., Sola, A.,
+      Messori, M. (2019). Diluted epoxy-coatings for TRM composites:
+      tensile tests raw data (version 3). Mendeley Data.
+      https://doi.org/10.17632/kbg7dz3yhx.3
+      Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+    - merlin-compression.raw: Hong, C. (2020). 04-08-2019 Instron.
+      Figshare. https://doi.org/10.6084/m9.figshare.13345313.v1
+      Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
 Data used by the test suite but not included
 --------------------------------------------
 

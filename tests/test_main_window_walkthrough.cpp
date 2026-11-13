@@ -640,6 +640,44 @@ private slots:
 
     // Phase 4: a curve digitised with PlotTracer drawn beside the test's
     // own, in the figure, and kept by the record.
+    // An Instron Bluehill Universal export (tests/fixtures/instron): the
+    // area comes from Bluehill's own results table, the window says the
+    // header's dimensions disagree, and Bluehill's results are shown below
+    // TenForge's, set apart, as Bluehill wrote them.
+    void open_an_instron_export_and_see_its_own_results_set_apart()
+    {
+        tf::gui::MainWindow w;
+        w.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&w));
+        chooseProcedure(&w, {"ISO 527-1"});
+        if (QTest::currentTestFailed())
+            return;
+        QVERIFY2(banner(&w).contains("File > Open data"), qPrintable(banner(&w)));
+        answerFileDialog(fixture("instron/bluehill-universal-composite.csv"));
+        QTest::mouseClick(button(&w, "Open data..."), Qt::LeftButton);
+
+        QCOMPARE(labelled<QLineEdit>(&w, "Cross-section S0 (mm2)")->text(), QStringLiteral("30.42"));
+        bool said = false;
+        for (QLabel *l : w.findChildren<QLabel *>())
+            said = said || (l->isVisible() && l->text().contains("do not match"));
+        QVERIFY2(said, "the window does not say the header's dimensions disagree with the area");
+
+        QVERIFY2(banner(&w).startsWith("Analysed"), qPrintable(banner(&w)));
+        shot(&w, "instron-1-own-results");
+        QTableWidget *t = resultsTable(&w);
+        QVERIFY(t);
+        QCOMPARE(cell(t, "Tensile stress at Tensile strength", 1), QStringLiteral("298.87"));
+        QCOMPARE(cell(t, "Tensile stress at Tensile strength", 2), QStringLiteral("MPa"));
+        int heading = -1, first = -1;
+        for (int r = 0; r < t->rowCount(); ++r) {
+            if (t->item(r, 0) && t->item(r, 0)->text().contains("from its own software"))
+                heading = r;
+            if (t->item(r, 0) && t->item(r, 0)->text() == "sigma_m" && first < 0)
+                first = r;
+        }
+        QVERIFY2(heading > first && first >= 0, "the file's results are not set apart below TenForge's");
+    }
+
     void add_a_plottracer_reference_curve_and_keep_it_in_the_record()
     {
         QTemporaryDir tmp;

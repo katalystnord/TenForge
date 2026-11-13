@@ -5,6 +5,7 @@
 #include <QRegularExpression>
 #include <QStringDecoder>
 
+#include <algorithm>
 #include <cmath>
 #include <map>
 
@@ -124,7 +125,7 @@ const std::map<QString, std::map<QString, double>> &unitTable()
                     {"in", 0.0254}}},
         {"area", {{"m2", 1}, {"m^2", 1}, {"m²", 1}, {"mm2", 1e-6}, {"mm^2", 1e-6},
                   {"mm²", 1e-6}, {"cm2", 1e-4}, {"cm²", 1e-4}, {"in2", 0.00064516},
-                  {"in²", 0.00064516}}},
+                  {"in²", 0.00064516}, {"in^2", 0.00064516}, {"mm*mm", 1e-6}}},
         {"strain", {{"1", 1}, {"%", 1e-2}, {"mm/mm", 1}, {"m/m", 1}}},
         {"time", {{"s", 1}, {"sec", 1}, {"ms", 1e-3}, {"min", 60}}},
     };
@@ -148,18 +149,76 @@ QList<int> matching(const QStringList &names, const QRegularExpression &re)
     return out;
 }
 
+// A header key without its section and colon: Bluehill writes
+// "Dimension : Area", Merlin "Area:".
+QString bareKey(QString k)
+{
+    const int sep = k.lastIndexOf(" : ");
+    if (sep >= 0)
+        k = k.mid(sep + 3);
+    k = k.trimmed();
+    if (k.endsWith(':'))
+        k.chop(1);
+    return k.trimmed();
+}
+
 const PreambleEntry *preamble(const Table &t, const QStringList &keys)
 {
     for (const auto &p : t.preamble)
         for (const QString &k : keys)
             if (p.key.compare(k, Qt::CaseSensitive) == 0)
                 return &p;
+    for (const auto &p : t.preamble)
+        for (const QString &k : keys)
+            if (bareKey(p.key).compare(k, Qt::CaseInsensitive) == 0)
+                return &p;
     return nullptr;
+}
+
+bool bracketed(const QString &f)
+{
+    return f.size() >= 2 && ((f.front() == '(' && f.back() == ')') || (f.front() == '[' && f.back() == ']'));
+}
+
+bool knownUnit(const QString &u)
+{
+    for (const char *d : {"force", "length", "strain", "time", "area"})
+        if (siFactor(u, d))
+            return true;
+    return false;
+}
+
+// The unit a column's name carries, when it is one TenForge knows: after
+// the last underscore ("force_kN"), in brackets at the end ("Force (kN)"),
+// or as the last word ("Load N", Instron Merlin). A bare number is never
+// taken as a unit ("Extension 1" is not a strain).
+QString unitInName(const QString &name)
+{
+    const QString n = name.trimmed();
+    QStringList tries;
+    const int us = n.lastIndexOf('_');
+    if (us >= 0)
+        tries << n.mid(us + 1);
+    static const QRegularExpression br(R"([\(\[]\s*([^\)\]]+?)\s*[\)\]]$)");
+    if (const auto m = br.match(n); m.hasMatch())
+        tries << m.captured(1);
+    const int sp = n.lastIndexOf(' ');
+    if (sp >= 0)
+        tries << n.mid(sp + 1);
+    for (const QString &u : tries) {
+        bool isNumber = false;
+        u.toDouble(&isNumber);
+        if (!isNumber && knownUnit(u))
+            return u;
+    }
+    return {};
 }
 
 const QRegularExpression &forceRe()
 {
-    static const QRegularExpression re(R"(force|load|kraft)", QRegularExpression::CaseInsensitiveOption);
+    // English, German, Italian, Spanish, Portuguese.
+    static const QRegularExpression re(R"(force|load|kraft|carico|forza|fuerza|carga|for[cç]a)",
+                                       QRegularExpression::CaseInsensitiveOption);
     return re;
 }
 
@@ -171,9 +230,14 @@ const std::vector<QRegularExpression> &extensionTiers()
     static const std::vector<QRegularExpression> tiers{
         QRegularExpression(R"(extensometer)", QRegularExpression::CaseInsensitiveOption),
         QRegularExpression(R"(extension|elongation|strain|dehnung|deflection|durchbiegung|)"
-                           R"(verformung|d[eé]formation|compression|stauchung)",
+                           R"(verformung|d[eé]formation|compression|stauchung|)"
+                           R"(allungamento|estensione|deformazione|flessione|)"
+                           R"(alargamiento|elongaci[oó]n|deformaci[oó]n|flecha|)"
+                           R"(alongamento|deforma[cç][aã]o)",
                            QRegularExpression::CaseInsensitiveOption),
-        QRegularExpression(R"(displacement|crosshead|traverse|position|stroke)",
+        QRegularExpression(R"(displacement|crosshead|traverse|position|stroke|)"
+                           R"(corsa|traversa|spostamento|posizione|)"
+                           R"(desplazamiento|posici[oó]n|deslocamento|posi[cç][aã]o)",
                            QRegularExpression::CaseInsensitiveOption),
     };
     return tiers;
@@ -275,8 +339,48 @@ TableOrError readTable(const QString &path)
     }
 
     const int preambleEnd = namesRow >= 0 ? namesRow : d.first;
+    static const QRegularExpression resultsTitle(R"(^results\s+table\b)",
+                                                 QRegularExpression::CaseInsensitiveOption);
     for (int i = 0; i < preambleEnd; ++i) {
         const QStringList fs = fields(lines[i], d.delim);
+        // The software's own results (Bluehill: "Results Table 1", then
+        // names, units in brackets, one row per specimen), kept apart.
+        if (fs.size() == 1 && resultsTitle.match(fs[0]).hasMatch()) {
+            const QString title = fs[0];
+            int j = i + 1;
+            const QStringList names = j < preambleEnd ? fields(lines[j], d.delim) : QStringList();
+            if (names.size() < 2) {
+                continue;  // a title with no table under it (the curve's own)
+            }
+            ++j;
+            QStringList units;
+            if (j < preambleEnd) {
+                const QStringList us = fields(lines[j], d.delim);
+                bool allUnits = true;
+                for (const QString &u : us)
+                    allUnits = allUnits && (u.isEmpty() || bracketed(u));
+                if (allUnits) {
+                    for (const QString &u : us)
+                        units << stripBrackets(u);
+                    ++j;
+                }
+            }
+            for (; j < preambleEnd; ++j) {
+                const QStringList row = fields(lines[j], d.delim);
+                if (row.size() < 2 || (row.size() == 1 && row[0].isEmpty()))
+                    break;
+                for (int c = 1; c < names.size() && c < row.size(); ++c)
+                    if (!names[c].isEmpty())
+                        t.results.push_back({title, row[0], names[c], units.value(c), row[c]});
+            }
+            i = j - 1;
+            continue;
+        }
+        // Bluehill Universal: key, (unit), value.
+        if (fs.size() == 3 && !fs[0].isEmpty() && (fs[1].isEmpty() || bracketed(fs[1]))) {
+            t.preamble.push_back({fs[0], fs[2], stripBrackets(fs[1])});
+            continue;
+        }
         if (fs.size() >= 2 && !fs[0].isEmpty()) {
             t.preamble.push_back({fs[0], fs[1], fs.size() >= 3 ? fs[2] : QString()});
             continue;
@@ -295,6 +399,26 @@ TableOrError readTable(const QString &path)
         for (int c = 0; c < d.width; ++c)
             t.columns[c].push_back(*number(fs[c], d.decimal));
     }
+
+    // A leading column that is empty in every row and named by a number or
+    // nothing (Bluehill writes the specimen number there, above no data)
+    // carries nothing: left out, and said.
+    static const QRegularExpression indexName(R"(^\d*$)");
+    if (d.width > 2 && indexName.match(t.names[0]).hasMatch()
+        && std::all_of(t.columns[0].begin(), t.columns[0].end(),
+                       [](double v) { return std::isnan(v); })) {
+        t.notes << (t.names[0].isEmpty()
+                        ? QString("the file's first column is empty in every row; it is left out")
+                        : "the file's first column (headed \"" + t.names[0]
+                              + "\") is empty in every row; it is left out");
+        t.names.removeFirst();
+        t.units.removeFirst();
+        t.columns.erase(t.columns.begin());
+    }
+    if (!t.results.empty())
+        t.notes << QString("the file holds %1 result(s) of its own software; they are shown as the "
+                           "file's, not used by the analysis")
+                       .arg(t.results.size());
     return {t, {}};
 }
 
@@ -342,6 +466,8 @@ TensionImport toTension(const Table &t, const TensionMapping &m)
         if (!t.units.value(col).isEmpty())
             return t.units[col];
         const QString name = t.names[col];
+        if (const QString u = unitInName(name); !u.isEmpty())
+            return u;
         const int us = name.lastIndexOf('_');
         return us >= 0 ? name.mid(us + 1) : QString();
     };
@@ -437,14 +563,7 @@ QString columnUnit(const Table &t, const QString &column)
         return {};
     if (!t.units.value(col).isEmpty())
         return t.units[col];
-    const int us = t.names[col].lastIndexOf('_');
-    if (us < 0)
-        return {};
-    const QString u = t.names[col].mid(us + 1);
-    for (const char *d : {"force", "length", "strain", "time"})
-        if (siFactor(u, d))
-            return u;
-    return {};
+    return unitInName(t.names[col]);
 }
 
 std::optional<double> preambleQuantity(const Table &t, const QStringList &keys,
@@ -456,6 +575,31 @@ std::optional<double> preambleQuantity(const Table &t, const QStringList &keys,
     if (key)
         *key = p->key;
     return parseQuantity(p->value + " " + p->unit, dimension);
+}
+
+std::optional<double> fileResultQuantity(const Table &t, const QStringList &names,
+                                         const QString &dimension, const FileResult **found)
+{
+    for (const FileResult &r : t.results) {
+        bool match = false;
+        for (const QString &n : names)
+            match = match || r.name.compare(n, Qt::CaseInsensitive) == 0;
+        if (!match)
+            continue;
+        if (found)
+            *found = &r;
+        // Bluehill groups thousands with commas in its results ("2,225.34").
+        QString v = r.value;
+        static const QRegularExpression grouped(R"(^-?\d{1,3}(,\d{3})+(\.\d*)?$)");
+        if (grouped.match(v).hasMatch())
+            v.remove(',');
+        bool ok = false;
+        v.toDouble(&ok);
+        if (!ok || r.unit.isEmpty())
+            return std::nullopt;
+        return parseQuantity(v + " " + r.unit, dimension);
+    }
+    return std::nullopt;
 }
 
 QStringList knownUnits(const QString &dimension)

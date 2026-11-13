@@ -269,6 +269,17 @@ int main(int argc, char *argv[])
         }
         o << "\n";
     }
+    const QJsonArray own = doc.value("source_results").toArray();
+    if (!own.isEmpty()) {
+        o << "\nResults in the file, from its own software (as written; not TenForge's, not "
+             "checked)\n";
+        for (const QJsonValue &v : own) {
+            const QJsonObject r = v.toObject();
+            o << "  " << (r.value("value").toString() + " " + r.value("unit").toString()).leftJustified(14)
+              << r.value("name").toString() << "  (" << r.value("table").toString() << ", row "
+              << r.value("row").toString() << ")\n";
+        }
+    }
     const QJsonArray flags = doc.value("flags").toArray();
     if (!flags.isEmpty()) {
         o << "\nFlags\n";

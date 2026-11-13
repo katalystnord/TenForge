@@ -42,6 +42,23 @@ point or comma; a block of `key;value` lines above the header; units in a
 row of their own or in the column names). Nothing in the file is changed;
 TenForge only reads it.
 
+Exports checked with real files from: **ZwickRoell** testXpert III (and a
+French-language Zwick export); **Instron** Bluehill 2 and 3 (also in
+Italian), Bluehill Universal and Merlin. Column names are recognised in English, German, French,
+Italian, Spanish and Portuguese; where none fits, the window asks which
+column is which.
+
+**The machine software's own results.** Some exports carry the results
+the machine's software computed (Instron Bluehill writes a "Results
+Table" above the curve). TenForge shows them under its own results, in
+a section of their own, exactly as written: they are the file's, not
+TenForge's, and TenForge neither checks nor uses them. Side by side they
+show where two methods differ: a modulus found by Bluehill's "Automatic
+Young's" is not ISO 527-1's fit between 0.05 % and 0.25 % strain. When
+the file's own results give the area its software used, TenForge takes
+it; if the file's header gives dimensions that do not match it (Bluehill
+can keep a method's default width and thickness there), the notes say so.
+
 The bar across the top of the window always says the **one next step**,
 and the field it is about is outlined. Follow it from top to bottom.
 

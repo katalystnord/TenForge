@@ -114,4 +114,28 @@ TF_CASE(the_report_has_no_em_or_en_dashes)
     TF_CHECK(!html.contains(QChar(0x2013)));
 }
 
+TF_CASE(the_files_own_results_are_shown_apart_and_as_written)
+{
+    // Bluehill Universal's results table (tests/fixtures/instron): shown in
+    // its own section, value and unit as Bluehill wrote them, never among
+    // TenForge's results; a file without one gets no such section.
+    Session s;
+    s.profile = "iso-527-1-2019";
+    TF_REQUIRE(s.openData(QString(TF_FIXTURES) + "/instron/bluehill-universal-results.csv").isEmpty());
+    s.specimen.shape = Specimen::Shape::GivenArea;
+    s.specimen.area = 122.5e-6;
+    TF_REQUIRE(s.analyse());
+    const QString html = reportHtml(s.analysis()->doc, s.specimen, {});
+    const int own = html.indexOf("<h2>Results in the file");
+    TF_REQUIRE(own > html.indexOf("<h2>Results</h2>"));
+    const QString section = html.mid(own, html.indexOf("</table>", own) - own);
+    TF_CHECK(section.contains("Maximum Force"));
+    TF_CHECK(section.contains("285.30"));
+    TF_CHECK(section.contains("Modulus (Automatic Young&#39;s)") || section.contains("Modulus (Automatic Young's)"));
+    TF_CHECK(section.contains("-----"));
+    TF_CHECK(section.contains("not checked"));
+    TF_CHECK(!analysed().analysis()->doc.contains("source_results"));
+    TF_CHECK(!reportHtml(analysed().analysis()->doc, analysed().specimen, {}).contains("Results in the file"));
+}
+
 int main() { return tf::test::run(); }
