@@ -161,6 +161,14 @@ target_compile_definitions(test_annotations PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME chart_regions_labels_notes_and_modulus_window COMMAND test_annotations)
 
+# --- Exports for FreeCAD, CalculiX and ParaView (tf_core) -------------------
+# The .vtp is read back with VTK's XML reader, as ParaView and PyVista do.
+add_executable(test_exports test_exports.cpp)
+target_link_libraries(test_exports PRIVATE tf_core VTK::IOXML VTK::CommonDataModel)
+target_compile_definitions(test_exports PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME exports_for_freecad_calculix_and_paraview COMMAND test_exports)
+
 # --- The analysis session behind the window (tf_core) -----------------------
 add_executable(test_session test_session.cpp)
 target_link_libraries(test_session PRIVATE tf_core)
@@ -234,6 +242,34 @@ target_link_libraries(validate_bam_s355 PRIVATE tf_core)
 target_compile_definitions(validate_bam_s355 PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME bam_s355_matches_reported_results COMMAND validate_bam_s355)
+
+# --- FreeCAD and CalculiX take TenForge's exports (Phase 4 exit) -------------
+# Runs only where FreeCAD's flatpak is installed (not in CI): an external
+# program cannot be a dependency of the suite, but where it is present the
+# check is real, end to end.
+find_program(TF_FLATPAK flatpak)
+set(tf_have_freecad FALSE)
+if(TF_FLATPAK)
+    execute_process(COMMAND ${TF_FLATPAK} info org.freecad.FreeCAD
+                    RESULT_VARIABLE tf_fc_rc OUTPUT_QUIET ERROR_QUIET)
+    if(tf_fc_rc EQUAL 0)
+        set(tf_have_freecad TRUE)
+    endif()
+endif()
+if(tf_have_freecad)
+    add_test(NAME freecad_loads_the_card_and_calculix_runs_the_yield_points
+             COMMAND ${CMAKE_COMMAND}
+                     -DTF_ANALYSE=$<TARGET_FILE:tf-analyse>
+                     -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/synthetic/ro-continuous.csv
+                     -DSCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/freecad/check_exports.py
+                     -DWORK=${CMAKE_BINARY_DIR}/freecad-check
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/freecad/run_check.cmake)
+    set_tests_properties(freecad_loads_the_card_and_calculix_runs_the_yield_points
+                         PROPERTIES TIMEOUT 900)
+else()
+    message(STATUS "FreeCAD (flatpak org.freecad.FreeCAD) not found: the FreeCAD and "
+                   "CalculiX export check is not run")
+endif()
 
 # --- The command line says what it is and what it cannot do yet -------------
 add_test(NAME cli_reports_its_version

@@ -44,6 +44,7 @@ find_package(VTK REQUIRED COMPONENTS
     ViewsContext2D            # vtkContextView
     RenderingContextOpenGL2   # the 2D context's OpenGL backend
     IOExport                  # vtkSVGExporter: the chart as a vector figure
+    IOXML                     # tests read exported .vtp back as ParaView would
 )
 
 enable_testing()

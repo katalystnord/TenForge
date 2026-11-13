@@ -1,6 +1,7 @@
 #include "core/ApplicationInfo.h"
 #include "core/Import.h"
 #include "core/Profile.h"
+#include "core/Exports.h"
 #include "core/Results.h"
 #include "core/Session.h"
 
@@ -90,9 +91,11 @@ int main(int argc, char *argv[])
     const QCommandLineOption complianceOpt("compliance", "A table of force against the machine's own displacement, taken out of the displacement (compression and bending).", "file");
     const QCommandLineOption jsonOpt("json", "Write results.json here (\"-\" for standard output).", "path");
     const QCommandLineOption csvOpt("csv", "Write results.csv here (\"-\" for standard output).", "path");
+    const QCommandLineOption freecadOpt("freecad", "Tension: write a FreeCAD material card <name>.FCMat, FEM yield points <name>-yieldpoints.txt and a CalculiX block <name>-plastic.inp (true stress against true plastic strain, yield to Rm).", "name");
+    const QCommandLineOption vtpOpt("vtp", "Write the analysed curve as VTK XML PolyData (.vtp), for ParaView and PyVista.", "path");
     parser.addOptions({profileOpt, listOpt, forceOpt, extOpt, forceUnitOpt, extUnitOpt, areaOpt,
                        gaugeOpt, widthOpt, thicknessOpt, spanOpt, loadingSpanOpt, deflectionAtOpt,
-                       complianceOpt, jsonOpt, csvOpt});
+                       complianceOpt, jsonOpt, csvOpt, freecadOpt, vtpOpt});
     parser.process(app);
 
     if (parser.isSet(listOpt)) {
@@ -195,6 +198,26 @@ int main(int argc, char *argv[])
         return refuse("cannot write " + parser.value(jsonOpt));
     if (parser.isSet(csvOpt) && !writeFile(parser.value(csvOpt), tf::core::resultsCsv(doc).toUtf8()))
         return refuse("cannot write " + parser.value(csvOpt));
+    if (parser.isSet(freecadOpt)) {
+        const QString base = parser.value(freecadOpt);
+        QString error;
+        const QString card = tf::core::freecadCard(*session.analysis(), session.specimen, &error);
+        if (card.isEmpty())
+            return refuse("no FreeCAD card: " + error);
+        if (!writeFile(base + ".FCMat", card.toUtf8()))
+            return refuse("cannot write " + base + ".FCMat");
+        const tf::core::Hardening h = tf::core::hardeningCurve(*session.analysis());
+        if (h.error.isEmpty()) {
+            if (!writeFile(base + "-yieldpoints.txt", (tf::core::yieldPoints(h).join('\n') + '\n').toUtf8())
+                || !writeFile(base + "-plastic.inp",
+                              tf::core::calculixPlastic(h, *session.analysis()).toUtf8()))
+                return refuse("cannot write the yield points beside " + base + ".FCMat");
+        } else {
+            err() << "tf-analyse: card written; no hardening curve: " << h.error << "\n";
+        }
+    }
+    if (parser.isSet(vtpOpt) && !writeFile(parser.value(vtpOpt), tf::core::curveVtp(*session.analysis()).toUtf8()))
+        return refuse("cannot write " + parser.value(vtpOpt));
     if (parser.value(jsonOpt) == "-" || parser.value(csvOpt) == "-")
         return 0;  // standard output carries the document; no table around it
 

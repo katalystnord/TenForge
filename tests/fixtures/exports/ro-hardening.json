@@ -1,0 +1,87 @@
+{
+  "fixture": "synthetic/ro-continuous.csv",
+  "note": "True stress against true plastic strain, closed form: Rp0.2 at plastic strain 0, then the curve's own plastic strains from Rp0.2 to Rm (500 MPa engineering).",
+  "E_MPa": 200000.0,
+  "points": [
+    {
+      "true_stress_MPa": 301.05,
+      "plastic_strain": 0.0
+    },
+    {
+      "true_stress_MPa": 301.05,
+      "plastic_strain": 0.00198863925425578
+    },
+    {
+      "true_stress_MPa": 380.90008939466213,
+      "plastic_strain": 0.017672408618573037
+    },
+    {
+      "true_stress_MPa": 412.6945793121992,
+      "plastic_strain": 0.0333561779828903
+    },
+    {
+      "true_stress_MPa": 436.0916214407197,
+      "plastic_strain": 0.049039947347207555
+    },
+    {
+      "true_stress_MPa": 455.8615599491505,
+      "plastic_strain": 0.06472371671152481
+    },
+    {
+      "true_stress_MPa": 473.64855656509854,
+      "plastic_strain": 0.08040748607584207
+    },
+    {
+      "true_stress_MPa": 490.22197860808944,
+      "plastic_strain": 0.09609125544015933
+    },
+    {
+      "true_stress_MPa": 506.0059146601046,
+      "plastic_strain": 0.11177502480447658
+    },
+    {
+      "true_stress_MPa": 521.2599471825911,
+      "plastic_strain": 0.12745879416879383
+    },
+    {
+      "true_stress_MPa": 536.1551349375396,
+      "plastic_strain": 0.14314256353311108
+    },
+    {
+      "true_stress_MPa": 550.8106239990968,
+      "plastic_strain": 0.15882633289742834
+    },
+    {
+      "true_stress_MPa": 565.3130986958565,
+      "plastic_strain": 0.1745101022617456
+    },
+    {
+      "true_stress_MPa": 579.7279069717899,
+      "plastic_strain": 0.19019387162606285
+    },
+    {
+      "true_stress_MPa": 594.1058030207023,
+      "plastic_strain": 0.2058776409903801
+    },
+    {
+      "true_stress_MPa": 608.4872292459191,
+      "plastic_strain": 0.22156141035469737
+    },
+    {
+      "true_stress_MPa": 622.9051425168814,
+      "plastic_strain": 0.23724517971901463
+    },
+    {
+      "true_stress_MPa": 637.3869410940412,
+      "plastic_strain": 0.2529289490833319
+    },
+    {
+      "true_stress_MPa": 651.9558152537734,
+      "plastic_strain": 0.26861271844764917
+    },
+    {
+      "true_stress_MPa": 666.631716879202,
+      "plastic_strain": 0.2842964878119664
+    }
+  ]
+}

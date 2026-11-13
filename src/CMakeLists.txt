@@ -29,6 +29,7 @@ endforeach()
 # --- tf_core: record, profiles, calibration, sequencer ----------------------
 add_library(tf_core STATIC
     core/Annotations.cpp
+    core/Exports.cpp
     core/ApplicationInfo.cpp
     core/Import.cpp
     core/Profile.cpp
