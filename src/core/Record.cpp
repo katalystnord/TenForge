@@ -254,6 +254,14 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
     w.write("channels/" + extId + ".csv", channelCsv(extSi, source.columns[ec], extSiValues),
             {{"role", "channel"}, {"channel", extId}});
 
+    // Where a channel came from: the file, its column and unit, and which of
+    // the file's specimens side by side, when it holds several.
+    auto sourceOf = [&](const QString &column, const QString &fileUnit) {
+        QJsonObject o{{"file", sourceRel}, {"column", column}, {"unit", fileUnit}};
+        if (!source.fileSpecimen.isEmpty())
+            o["specimen_in_file"] = source.fileSpecimen;
+        return o;
+    };
     auto channel = [&](const QString &quantity, const QString &unit, const QString &column,
                        const QString &fileUnit) {
         return QJsonObject{{"quantity", quantity},
@@ -261,9 +269,7 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
                            {"kind", "measured"},
                            {"timestamps", "none"},
                            {"calibration", QJsonValue()},
-                           {"source", QJsonObject{{"file", sourceRel},
-                                                  {"column", column},
-                                                  {"unit", fileUnit}}}};
+                           {"source", sourceOf(column, fileUnit)}};
     };
     QString complianceRel;
     if (!compliancePath.isEmpty()) {
@@ -463,6 +469,7 @@ OpenedRecord openRecord(const QString &dirIn)
     const QJsonObject fsrc = channels.value("force").toObject().value("source").toObject();
     const QJsonObject esrc = channels.value(extId).toObject().value("source").toObject();
     r.sourceFile = fsrc.value("file").toString();
+    r.fileSpecimen = fsrc.value("specimen_in_file").toString();
     r.forceColumn = fsrc.value("column").toString();
     r.forceUnit = fsrc.value("unit").toString();
     r.extensionColumn = esrc.value("column").toString();

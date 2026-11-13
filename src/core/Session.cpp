@@ -48,12 +48,13 @@ QString shownValue(const QJsonObject &r)
 
 } // namespace
 
-QString Session::openData(const QString &path)
+QString Session::openData(const QString &path, const QString &fileSpecimen)
 {
-    auto t = readTable(path);
+    auto t = readTable(path, fileSpecimen);
     if (!t.table)
         return t.error;
     m_table = std::move(t.table);
+    m_fileSpecimenChosen = !fileSpecimen.isEmpty();
     m_recordDir.clear();
     m_notes.clear();
     m_notices.clear();
@@ -148,11 +149,12 @@ QString Session::openRecord(const QString &dirOrManifest)
     if (o.sourceFile.isEmpty())
         return "the record has no imported source file; records of live tests arrive with a "
                "later release";
-    auto t = readTable(o.dir + "/" + o.sourceFile);
+    auto t = readTable(o.dir + "/" + o.sourceFile, o.fileSpecimen);
     if (!t.table)
         return "the record's source file cannot be read: " + t.error;
 
     m_table = std::move(t.table);
+    m_fileSpecimenChosen = true;
     m_recordDir = o.dir;
     m_analysis.reset();
     m_notes = {"opened from the record " + o.dir};
@@ -299,6 +301,12 @@ Step Session::next() const
         return {false, "data",
                 "Open a machine export: a CSV or text file from your testing machine "
                 "(File > Open data)."};
+
+    if (m_table->fileSpecimens.size() > 1 && !m_fileSpecimenChosen)
+        return {false, "fileSpecimen",
+                QString("Choose the specimen to analyse: the file holds %1 side by side (%2).")
+                    .arg(m_table->fileSpecimens.size())
+                    .arg(m_table->fileSpecimens.join(", "))};
 
     const QStringList &names = m_table->names;
     const QString word = displacementWord();
@@ -604,7 +612,8 @@ bool Session::analyse()
     }
     a.doc = resultsJson(a.profile, a.result,
                         {m_table->path, QString::fromLatin1(m_table->sha256),
-                         a.imported.forceColumn, a.imported.extensionColumn, notes},
+                         a.imported.forceColumn, a.imported.extensionColumn, notes,
+                         m_table->fileSpecimen},
                         QDateTime::currentDateTimeUtc(), validity(a.profile));
     if (!m_table->results.empty()) {
         // The machine software's own results, as written: shown beside

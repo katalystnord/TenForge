@@ -125,6 +125,28 @@
 #     exponents were read before; it is red only on its "Test: ..." line.
 #   Did not catch: stripping a byte order mark, because Qt's UTF-8
 #   decoder already drops it; the strip was dead code and was removed.
+#
+# NEGATIVE CHECKS, 2026-11-13, machine exports (Shimadzu):
+#   - import_machine_exports, 3 Shimadzu cases written first and seen red
+#     (Shift-JIS, side by side, one name twice);
+#     a_file_of_one_specimen_names_none is a guard and passed before.
+#   - analysis_session_guides_and_analyses (the side-by-side case), the two
+#     cli_*specimen* tests: written after the code; broken instead, below.
+#   - main_window_walkthrough, side-by-side case: written first, red (no
+#     specimen list).
+#   Each fix then undone on its own, the test run, restored:
+#     no Shift-JIS, no NFKC matching, or the trailing empty column kept:
+#       the Japanese case red;
+#     Shift-JIS taken without a lead byte of 0x81 to 0x9F: the French
+#       PU-foam case red (that Latin-1 file was read as Japanese);
+#     no side-by-side reading, or the empty rows below a specimen kept:
+#       the side-by-side case red;
+#     a repeated name counted twice: the one-name-twice case red;
+#     no specimen step: the session case and cli_asks_which_specimen red;
+#     the record not keeping the specimen, or reopening ignoring it: the
+#       session case red;
+#     the window listing a repeated name twice, or hiding the specimen
+#       list: the walkthrough case red.
 
 # --- The engine stands alone ------------------------------------------------
 # Every public header of tf_analysis, included into one translation unit and
@@ -445,6 +467,16 @@ set_tests_properties(cli_without_an_area_names_what_is_missing PROPERTIES
 add_test(NAME cli_without_an_area_exits_non_zero
          COMMAND tf-analyse --profile iso-527-1-2019 ${TF_SYN}/polymer.csv)
 set_tests_properties(cli_without_an_area_exits_non_zero PROPERTIES WILL_FAIL TRUE)
+set(TF_SBS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/shimadzu/trapezium-side-by-side.csv)
+add_test(NAME cli_asks_which_specimen_of_several_in_a_file
+         COMMAND tf-analyse --profile iso-527-1-2019 --area "20.4 mm2" ${TF_SBS})
+set_tests_properties(cli_asks_which_specimen_of_several_in_a_file PROPERTIES
+    PASS_REGULAR_EXPRESSION "give --specimen: .*1- 1, 1- 2, 1- 3")
+add_test(NAME cli_analyses_the_named_specimen_of_several
+         COMMAND tf-analyse --profile iso-527-1-2019 --area "20.4 mm2" --specimen "1- 3"
+                 --extension Strain --json - ${TF_SBS})
+set_tests_properties(cli_analyses_the_named_specimen_of_several PROPERTIES
+    PASS_REGULAR_EXPRESSION "\"specimen_in_file\": \"1- 3\"")
 
 # --- Walkthrough: the real window -------------------------------------------
 add_executable(test_main_window_walkthrough test_main_window_walkthrough.cpp)

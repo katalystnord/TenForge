@@ -83,6 +83,19 @@ tests/fixtures/mts/*
       https://doi.org/10.5281/zenodo.15343816
       Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
 
+tests/fixtures/shimadzu/*
+    Two raw exports from Shimadzu's Trapezium software, unchanged, used as
+    test data for the importer and the window. Sources, licences and
+    checksums in tests/fixtures/shimadzu/SOURCE.md, which also carries the
+    MIT notice:
+    - trapezium-japanese.csv: trtku, github.com/trtku/sand-report, MIT
+      (Copyright (c) 2022 trtku).
+    - trapezium-side-by-side.csv: Irving, J., Eluri, H., Zhang, X.,
+      Gnanasambandam, R. (2026). Bayesian Sequential Experiments for
+      Tensile Testing of Multi-material Fused Filament Fabricated Dogbones.
+      Zenodo. https://doi.org/10.5281/zenodo.21939238
+      Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
 Data used by the test suite but not included
 --------------------------------------------
 

@@ -206,6 +206,10 @@ QWidget *MainWindow::buildInputs()
     m_file->setWordWrap(false);
     m_file->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     df->addRow(m_file);
+    m_fileSpecimen = new QComboBox;
+    m_fileSpecimen->setObjectName(QStringLiteral("fileSpecimen"));
+    df->addRow(tr("Specimen in the file"), m_fileSpecimen);
+    df->setRowVisible(m_fileSpecimen, false);
     m_forceColumn = new QComboBox;
     m_forceUnit = new QComboBox;
     m_extColumn = new QComboBox;
@@ -308,8 +312,8 @@ QWidget *MainWindow::buildInputs()
     // Long column names and procedure titles must not widen the panel.
     // Nothing in it may make the panel wider than it shows (the walkthrough
     // checks): every list and label sizes down.
-    for (QComboBox *c : {m_forceColumn, m_extColumn, m_profile, m_forceUnit, m_extUnit,
-                         m_shape, m_deflectionAt}) {
+    for (QComboBox *c : {m_fileSpecimen, m_forceColumn, m_extColumn, m_profile, m_forceUnit,
+                         m_extUnit, m_shape, m_deflectionAt}) {
         c->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
         c->setMinimumContentsLength(10);
     }
@@ -317,6 +321,23 @@ QWidget *MainWindow::buildInputs()
     // Every edit goes to the session and the outcome is redrawn.
     for (QComboBox *c : {m_forceColumn, m_forceUnit, m_extColumn, m_extUnit, m_deflectionAt})
         connect(c, &QComboBox::currentIndexChanged, this, [this] { readInputs(); });
+    // Another specimen of the file: read it afresh, as a new file.
+    connect(m_fileSpecimen, &QComboBox::currentIndexChanged, this, [this] {
+        const QString title = m_fileSpecimen->currentData().toString();
+        const auto *t = m_session.table();
+        if (m_updating || title.isEmpty() || !t)
+            return;
+        const bool asked = m_session.next().field == "fileSpecimen";
+        if (title == t->fileSpecimen && !asked)
+            return;
+        const QString err = m_session.openData(t->path, title);
+        if (!err.isEmpty()) {
+            m_notices->setText(tr("The specimen could not be read: %1").arg(err));
+            m_notices->setVisible(true);
+        }
+        showSession();
+        refresh();
+    });
     connect(m_shape, &QComboBox::currentIndexChanged, this, [this] {
         showShapeRows();
         readInputs();
@@ -509,14 +530,28 @@ void MainWindow::showSession()
                                : tr("No file open.");
     m_file->setToolTip(t ? t->path : QString());
     m_file->setText(m_file->fontMetrics().elidedText(fileText, Qt::ElideMiddle, 320));
+    // A file of several specimens side by side: which one, chosen here.
+    m_fileSpecimen->clear();
+    const bool several = t && t->fileSpecimens.size() > 1;
+    if (several) {
+        m_fileSpecimen->addItem(tr("Choose..."), QString());
+        for (const QString &title : t->fileSpecimens)
+            m_fileSpecimen->addItem(title, title);
+        if (m_session.next().field != "fileSpecimen")
+            select(m_fileSpecimen, t->fileSpecimen);
+    }
+    m_dataForm->setRowVisible(m_fileSpecimen, several);
     for (QComboBox *c : {m_forceColumn, m_extColumn}) {
         c->clear();
         c->addItem(tr("Choose..."), QString());
         if (t)
             for (int i = 0; i < t->names.size(); ++i)
-                c->addItem(t->names[i] + (t->units.value(i).isEmpty() ? QString()
-                                                                      : " (" + t->units[i] + ")"),
-                           t->names[i]);
+                // A name the file repeats is one choice: the name means the
+                // first such column (the read notes say so).
+                if (t->names.indexOf(t->names[i]) == i)
+                    c->addItem(t->names[i] + (t->units.value(i).isEmpty() ? QString()
+                                                                          : " (" + t->units[i] + ")"),
+                               t->names[i]);
     }
     select(m_forceColumn, m_session.mapping.forceColumn);
     select(m_extColumn, m_session.mapping.extensionColumn);
@@ -657,6 +692,7 @@ void MainWindow::refresh()
 
     // The one field the next step is about is outlined.
     const std::map<QString, QWidget *> fields{
+        {"fileSpecimen", m_fileSpecimen},
         {"forceColumn", m_forceColumn}, {"forceUnit", m_forceUnit},
         {"extensionColumn", m_extColumn}, {"extensionUnit", m_extUnit},
         {"gaugeLength", m_gauge}, {"profile", m_profile}, {"span", m_span},
@@ -1039,7 +1075,7 @@ void MainWindow::readWindowFields()
 void MainWindow::openData()
 {
     const QString path = chooseFile(false, tr("Open a machine export"),
-                                    tr("Machine exports (*.csv *.txt *.tsv *.dat);;All files (*)"), {});
+                                    tr("Machine exports (*.csv *.txt *.tsv *.dat *.raw);;All files (*)"), {});
     if (path.isEmpty())
         return;
     const QString err = m_session.openData(path);

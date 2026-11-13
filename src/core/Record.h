@@ -51,6 +51,7 @@ struct OpenedRecord {
     QString profileId, profileVersion;
     QByteArray profileSha256;
     QString sourceFile;            // relative to dir
+    QString fileSpecimen;          // which of its specimens side by side; empty when one
     QString forceColumn, extensionColumn, forceUnit, extensionUnit;
     QJsonObject results;           // as stored
     QStringList problems;          // listed files that changed or are missing

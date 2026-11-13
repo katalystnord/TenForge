@@ -48,6 +48,11 @@ struct Table {
     QStringList notes;                         // what reading the file decided, in words
     QChar delimiter;
     QChar decimal;
+    // A file of several specimens side by side (Shimadzu Trapezium): their
+    // titles as written, and the one this table holds. Both empty when the
+    // file holds one.
+    QStringList fileSpecimens;
+    QString fileSpecimen;
 };
 
 struct TableOrError {
@@ -55,7 +60,9 @@ struct TableOrError {
     QString error;
 };
 
-TableOrError readTable(const QString &path);
+// fileSpecimen: which of a file's specimens side by side to read, by its
+// title; empty reads the first. A title the file does not have is an error.
+TableOrError readTable(const QString &path, const QString &fileSpecimen = {});
 
 // A value with its unit, e.g. "120.6 mm2" or "50mm". The unit is required.
 std::optional<double> parseQuantity(const QString &text, const QString &dimension);

@@ -159,3 +159,7 @@ SHA-256. Specified with Phase 2, when the GUI first handles series.
   as the cross-section when the file states no S0, with a note in
   `source.notes`; when the file's header gives a width and thickness that
   do not match it within 1 %, a note says that too.
+- **`source.specimen_in_file`**: when the data file holds several
+  specimens side by side (Shimadzu Trapezium), the title of the one
+  analysed, as written in the file (trimmed). Absent when the file holds
+  one.

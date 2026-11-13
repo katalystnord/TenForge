@@ -66,7 +66,9 @@ class Session
 public:
     // A machine export. On success the mapping, units and any geometry the
     // file states are filled in, and notes() says where each came from.
-    QString openData(const QString &path);
+    // fileSpecimen: which of a file's specimens side by side (by its title);
+    // when the file holds several and none is named, next() asks.
+    QString openData(const QString &path, const QString &fileSpecimen = {});
     // A test record (its folder or its manifest.tfrec). Analysed at once;
     // notices() lists what changed in it and any stored result that a
     // fresh analysis does not reproduce.
@@ -135,6 +137,7 @@ private:
     QJsonArray validity(const Profile &p) const;
 
     std::optional<Table> m_table;
+    bool m_fileSpecimenChosen = false;
     QString m_recordDir;
     QStringList m_notes, m_notices, m_unlisted;
     std::optional<Analysis> m_analysis;

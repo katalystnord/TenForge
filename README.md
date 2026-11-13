@@ -155,6 +155,12 @@ and bending, with what is not yet validated).
   [doi:10.5281/zenodo.8380702](https://doi.org/10.5281/zenodo.8380702);
   Cathelineau, P. (2025), [doi:10.5281/zenodo.15343816](https://doi.org/10.5281/zenodo.15343816);
   all three CC BY 4.0.
+- Shimadzu Trapezium exports included unchanged in
+  `tests/fixtures/shimadzu/` (sources, licences and the MIT notice in its
+  `SOURCE.md`): trtku's [sand-report](https://github.com/trtku/sand-report)
+  (MIT); Irving, J., Eluri, H., Zhang, X., Gnanasambandam, R. (2026),
+  [doi:10.5281/zenodo.21939238](https://doi.org/10.5281/zenodo.21939238),
+  CC BY 4.0.
 
 See [NOTICE](NOTICE).
 

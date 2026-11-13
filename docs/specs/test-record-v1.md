@@ -309,3 +309,10 @@ chooses. They are views of the record, not part of it.
 - **`results/curve.vtp`**: the analysed curve as VTK XML PolyData
   (exports-v1, section 3), role `results`: derived like `results.json`, so
   ParaView and PyVista open a record's curve with no plugin.
+
+## 11. Addition after release 0.3 (machine exports; additive, for David's review)
+
+- A channel's `source` gains **`specimen_in_file`** when the imported
+  file holds several specimens side by side: the title of the one the
+  channel was read from. Opening the record reads that specimen of the
+  kept file again.

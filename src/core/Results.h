@@ -23,6 +23,7 @@ struct SourceInfo {
     QString sha256;
     QString forceColumn, extensionColumn;
     QStringList notes;
+    QString fileSpecimen;  // which of the file's specimens side by side; empty when one
 };
 
 // A value in SI as the profile reports it: converted to the report unit and

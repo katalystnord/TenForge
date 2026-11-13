@@ -678,6 +678,43 @@ private slots:
         QVERIFY2(heading > first && first >= 0, "the file's results are not set apart below TenForge's");
     }
 
+    void open_a_file_of_specimens_side_by_side_and_choose_one()
+    {
+        tf::gui::MainWindow w;
+        w.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&w));
+        chooseProcedure(&w, {"ISO 527-1"});
+        if (QTest::currentTestFailed())
+            return;
+        answerFileDialog(fixture("shimadzu/trapezium-side-by-side.csv"));
+        QTest::mouseClick(button(&w, "Open data..."), Qt::LeftButton);
+
+        // The banner asks which specimen, and names them; the list says them too.
+        QVERIFY2(banner(&w).contains("Choose the specimen to analyse"), qPrintable(banner(&w)));
+        auto *which = labelled<QComboBox>(&w, "Specimen in the file");
+        QVERIFY(which && which->isVisible());
+        QVERIFY2(!which->styleSheet().isEmpty(), "the specimen list is not the one outlined");
+        QCOMPARE(which->findText("1- 2"), 2);
+        shot(&w, "shimadzu-1-which-specimen");
+        which->setCurrentIndex(which->findText("1- 2"));
+
+        // Then the next step is about something else, and the notes say which
+        // specimen this is and how many rows it has.
+        QVERIFY2(!banner(&w).contains("Choose the specimen"), qPrintable(banner(&w)));
+        bool said = false;
+        for (QLabel *l : w.findChildren<QLabel *>())
+            said = said || (l->isVisible() && l->text().contains("this is \"1- 2\", its 4579 rows"));
+        QVERIFY2(said, "the window does not say which specimen it read");
+        // The force list offers "Force" once (the file has it in kN and in N).
+        auto *force = labelled<QComboBox>(&w, "Force column");
+        QVERIFY(force);
+        int forces = 0;
+        for (int i = 0; i < force->count(); ++i)
+            forces += force->itemData(i).toString() == "Force";
+        QCOMPARE(forces, 1);
+        QCOMPARE(which->currentText(), QStringLiteral("1- 2"));
+    }
+
     void add_a_plottracer_reference_curve_and_keep_it_in_the_record()
     {
         QTemporaryDir tmp;

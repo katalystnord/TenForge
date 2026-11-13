@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
     parser.addVersionOption();
     parser.addPositionalArgument(QStringLiteral("file"),
                                  QStringLiteral("A delimited text export from a testing machine."));
+    const QCommandLineOption specimenOpt("specimen", "Which specimen to analyse, by its title in the file, when the file holds several side by side (Shimadzu Trapezium).", "title");
     const QCommandLineOption profileOpt("profile", "Profile id (see --list-profiles) or a profile file.", "id-or-path");
     const QCommandLineOption listOpt("list-profiles", "List the profiles shipped with TenForge.");
     const QCommandLineOption forceOpt("force", "Name of the force column (found by name if not given).", "column");
@@ -95,7 +96,7 @@ int main(int argc, char *argv[])
     const QCommandLineOption recordOpt("record", "Save the test as a record in this new or empty folder.", "folder");
     const QCommandLineOption pmdOpt("pmd", "Tension: write the test as JSON-LD for Platform MaterialDigital (PMDco 3.1.2, TTO 3.0.0).", "path");
     const QCommandLineOption vtpOpt("vtp", "Write the analysed curve as VTK XML PolyData (.vtp), for ParaView and PyVista.", "path");
-    parser.addOptions({profileOpt, listOpt, forceOpt, extOpt, forceUnitOpt, extUnitOpt, areaOpt,
+    parser.addOptions({specimenOpt, profileOpt, listOpt, forceOpt, extOpt, forceUnitOpt, extUnitOpt, areaOpt,
                        gaugeOpt, widthOpt, thicknessOpt, spanOpt, loadingSpanOpt, deflectionAtOpt,
                        complianceOpt, jsonOpt, csvOpt, freecadOpt, vtpOpt, pmdOpt, recordOpt});
     parser.process(app);
@@ -122,7 +123,7 @@ int main(int argc, char *argv[])
 
     tf::core::Session session;
     session.profile = parser.value(profileOpt);
-    if (const QString e = session.openData(files.front()); !e.isEmpty())
+    if (const QString e = session.openData(files.front(), parser.value(specimenOpt)); !e.isEmpty())
         return refuse(e);
     const tf::core::Table &table = *session.table();
 
@@ -185,6 +186,7 @@ int main(int argc, char *argv[])
             {"loadingSpan", "--loading-span"},
             {"deflectionAt", "--deflection-at loading-points or mid-span"},
             {"compliance", "--compliance"},
+            {"fileSpecimen", "--specimen"},
         };
         return refuse(QString("give %1: %2").arg(option.value(step.field, "the missing input"), step.text));
     }

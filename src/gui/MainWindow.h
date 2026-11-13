@@ -88,6 +88,7 @@ private:
     QPushButton *m_addUnlisted = nullptr;
 
     QLabel *m_file = nullptr;
+    QComboBox *m_fileSpecimen = nullptr;  // shown only for a file of several specimens
     QComboBox *m_forceColumn = nullptr, *m_forceUnit = nullptr;
     QComboBox *m_extColumn = nullptr, *m_extUnit = nullptr;
     QLabel *m_readNotes = nullptr;

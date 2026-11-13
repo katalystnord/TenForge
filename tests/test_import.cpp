@@ -482,4 +482,78 @@ TF_CASE(french_testsuite_export_asks_which_of_its_deformations_to_use)
     TF_CHECK(ti.error.contains("3 candidates"));
 }
 
+// --- Shimadzu ------------------------------------------------------------------
+// Real exports, unchanged (tests/fixtures/shimadzu/SOURCE.md); expected values
+// read with iconv and awk.
+
+TF_CASE(japanese_trapezium_export_is_read_from_shift_jis)
+{
+    // Shift-JIS, half-width katakana in the names, a trailing comma on every
+    // line (an empty last column), ".335" with no leading zero.
+    const auto r = readTable(fixture("shimadzu/trapezium-japanese.csv"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.names == QStringList({QString::fromUtf8("時間"), QString::fromUtf8("試験力"),
+                                     QString::fromUtf8("ｽﾄﾛｰｸ")}));
+    TF_CHECK(t.units == QStringList({"sec", "N", "mm"}));
+    TF_REQUIRE(t.columns.size() == 3);
+    TF_CHECK(t.columns[1].size() == 2012);
+    TF_NEAR(t.columns[1][0], 3.125, 1e-15);
+    TF_NEAR(t.columns[2][2011], 0.335, 1e-15);
+    TF_CHECK(entry(t, QString::fromUtf8("試験名")) == QString::fromUtf8("試験ﾓｰﾄﾞ"));
+    TF_CHECK(t.notes.join("\n").contains("Shift-JIS"));
+    TF_CHECK(guessForceColumn(t) == QString::fromUtf8("試験力"));
+    TF_CHECK(guessExtensionColumn(t) == QString::fromUtf8("ｽﾄﾛｰｸ"));
+}
+
+TF_CASE(specimens_side_by_side_are_read_one_at_a_time)
+{
+    const QString path = fixture("shimadzu/trapezium-side-by-side.csv");
+    const QStringList six{"Time", "Force", "Stroke", "Force", "Stress", "Strain"};
+    const auto first = readTable(path);
+    TF_REQUIRE(first.table.has_value());
+    TF_CHECK(first.table->fileSpecimens == QStringList({"1- 1", "1- 2", "1- 3"}));
+    TF_CHECK(first.table->fileSpecimen == "1- 1");
+    TF_CHECK(first.table->names == six);
+    TF_CHECK(first.table->units == QStringList({"sec", "kN", "mm", "N", "N/mm2", "%"}));
+    // Each specimen's own rows, its blank cells below its end left out.
+    TF_CHECK(first.table->columns[0].size() == 1724);
+    TF_NEAR(first.table->columns[0].back(), 86.15, 1e-12);
+    TF_CHECK(first.table->notes.join("\n").contains("3 specimens"));
+
+    const auto second = readTable(path, "1- 2");
+    TF_REQUIRE(second.table.has_value());
+    TF_CHECK(second.table->fileSpecimen == "1- 2");
+    TF_CHECK(second.table->names == six);
+    TF_CHECK(second.table->columns[0].size() == 4579);
+    TF_NEAR(second.table->columns[4].back(), 0.273284314, 1e-12);
+
+    const auto third = readTable(path, "1- 3");
+    TF_REQUIRE(third.table.has_value());
+    TF_CHECK(third.table->columns[0].size() == 1690);
+    TF_NEAR(third.table->columns[5].back(), 0.039390486, 1e-12);
+
+    const auto none = readTable(path, "2- 1");
+    TF_CHECK(!none.table.has_value());
+    TF_CHECK(none.error.contains("1- 1, 1- 2, 1- 3"));
+}
+
+TF_CASE(two_columns_of_one_name_are_one_choice)
+{
+    // "Force" in kN and again in N: the same quantity, so not a question;
+    // the first is the one a name finds.
+    const auto r = readTable(fixture("shimadzu/trapezium-side-by-side.csv"));
+    TF_REQUIRE(r.table.has_value());
+    TF_CHECK(guessForceColumn(*r.table) == "Force");
+    TF_CHECK(columnUnit(*r.table, "Force") == "kN");
+}
+
+TF_CASE(a_file_of_one_specimen_names_none)
+{
+    const auto r = readTable(fixture("mts/testsuite-quoted.csv"));
+    TF_REQUIRE(r.table.has_value());
+    TF_CHECK(r.table->fileSpecimens.isEmpty());
+    TF_CHECK(r.table->fileSpecimen.isEmpty());
+}
+
 int main() { return tf::test::run(); }

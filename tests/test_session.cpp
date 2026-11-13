@@ -503,4 +503,38 @@ TF_CASE(the_files_own_results_travel_with_the_analysis_as_written)
         TF_CHECK(v.toObject().value("id").toString() != "Maximum Force");
 }
 
+TF_CASE(a_file_of_specimens_side_by_side_asks_which_and_the_record_keeps_it)
+{
+    // Shimadzu Trapezium (tests/fixtures/shimadzu): three specimens side by
+    // side. TenForge must not pick one silently.
+    const QString path = fixture("shimadzu/trapezium-side-by-side.csv");
+    Session s;
+    s.profile = "iso-527-1-2019";
+    TF_REQUIRE(s.openData(path).isEmpty());
+    TF_CHECK(s.next().field == "fileSpecimen");
+    TF_CHECK(s.next().text.contains("1- 1, 1- 2, 1- 3"));
+    TF_CHECK(!s.analyse());
+
+    TF_REQUIRE(s.openData(path, "1- 2").isEmpty());
+    TF_CHECK(s.next().field != "fileSpecimen");
+    TF_CHECK(s.table()->columns[0].size() == 4579);
+    s.mapping.extensionColumn = "Strain";
+    s.mapping.extensionUnit = "%";
+    s.specimen.shape = Specimen::Shape::GivenArea;
+    s.specimen.area = 20.4e-6;  // the file's Force (N) over its Stress (N/mm2)
+    TF_REQUIRE(s.analyse());
+    TF_CHECK(s.analysis()->doc.value("source").toObject().value("specimen_in_file").toString()
+             == "1- 2");
+
+    QTemporaryDir tmp;
+    TF_REQUIRE(s.saveRecord(tmp.path() + "/r").isEmpty());
+    Session r;
+    TF_REQUIRE(r.openRecord(tmp.path() + "/r").isEmpty());
+    TF_CHECK(r.table()->fileSpecimen == "1- 2");
+    TF_CHECK(r.table()->columns[0].size() == 4579);
+    TF_CHECK(r.next().field != "fileSpecimen");
+    TF_REQUIRE(r.analysis().has_value());
+    TF_CHECK(r.notices().isEmpty());
+}
+
 int main() { return tf::test::run(); }

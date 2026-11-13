@@ -47,10 +47,21 @@ French-language Zwick export); **Instron** Bluehill 2 and 3 (also in
 Italian), Bluehill Universal and Merlin; **MTS** 793 (MultiPurpose
 TestWare `.dat`, in English and German, with its data in blocks of 1024
 rows read whole) and TestSuite (in English and French, decimal point or
-comma). Column names are recognised in English, German, French,
-Italian, Spanish and Portuguese; a controller's set point ("Sollwert",
+comma); **Shimadzu** Trapezium (also in Japanese, in Shift-JIS). Column
+names are recognised in English, German, French, Italian, Spanish,
+Portuguese and Japanese; a controller's set point ("Sollwert",
 "Command") is never taken as the force. Where no column fits, or several
 do, the window asks which column is which.
+
+**Several specimens in one file.** Trapezium can write a batch's
+specimens side by side, each under its title. TenForge then asks which
+one to analyse ("Specimen in the file", in the Data box; `--specimen`
+on the command line) and never picks one by itself. Each specimen is
+read with its own rows only. The results and the record say which
+specimen it was, and a record opens again on the same one. To analyse
+another specimen of the file, choose it and save a record of its own.
+When a file has two columns of one name (Trapezium writes "Force" in kN
+and again in N), the name means the first, and the notes say so.
 
 **The machine software's own results.** Some exports carry the results
 the machine's software computed (Instron Bluehill writes a "Results

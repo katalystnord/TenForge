@@ -140,13 +140,44 @@ int findColumn(const QStringList &names, const QString &name)
     return -1;
 }
 
+// The columns whose names match, compared in compatibility form (NFKC), so
+// half-width katakana (Shimadzu's "ｽﾄﾛｰｸ") match as full-width. A name
+// repeated (Trapezium's "Force" in kN, then in N) is one choice: the first,
+// the one findColumn() finds by that name.
 QList<int> matching(const QStringList &names, const QRegularExpression &re)
 {
     QList<int> out;
     for (int i = 0; i < names.size(); ++i)
-        if (re.match(names[i]).hasMatch())
+        if (re.match(names[i].normalized(QString::NormalizationForm_KC)).hasMatch()
+            && findColumn(names, names[i]) == i)
             out << i;
     return out;
+}
+
+// Shift-JIS (Japanese Windows, Shimadzu Trapezium), told from Latin-1 by its
+// byte structure: every byte above 0x7F is a single-byte katakana or a lead
+// byte with a valid trail, and some lead bytes are 0x81 to 0x9F, which in
+// Latin-1 are control codes no text uses. A German "Prüfer" (0xFC 'f') is
+// a valid pair too, which is why the 0x81 to 0x9F leads are required.
+bool looksShiftJis(const QByteArray &bytes)
+{
+    int lowLeads = 0;
+    for (qsizetype i = 0; i < bytes.size();) {
+        const auto b = uchar(bytes[i]);
+        if (b < 0x80 || (b >= 0xA1 && b <= 0xDF)) {
+            ++i;
+            continue;
+        }
+        if (!((b >= 0x81 && b <= 0x9F) || (b >= 0xE0 && b <= 0xFC)) || i + 1 >= bytes.size())
+            return false;
+        const auto t = uchar(bytes[i + 1]);
+        if (!((t >= 0x40 && t <= 0x7E) || (t >= 0x80 && t <= 0xFC)))
+            return false;
+        if (b <= 0x9F)
+            ++lowLeads;
+        i += 2;
+    }
+    return lowLeads > 0;
 }
 
 // A header key without its section and colon: Bluehill writes
@@ -216,8 +247,8 @@ QString unitInName(const QString &name)
 
 const QRegularExpression &forceRe()
 {
-    // English, German, Italian, Spanish, Portuguese.
-    static const QRegularExpression re(R"(force|load|kraft|carico|forza|fuerza|carga|for[cç]a)",
+    // English, German, Italian, Spanish, Portuguese, Japanese.
+    static const QRegularExpression re(R"(force|load|kraft|carico|forza|fuerza|carga|for[cç]a|試験力|荷重)",
                                        QRegularExpression::CaseInsensitiveOption);
     return re;
 }
@@ -247,11 +278,11 @@ const std::vector<QRegularExpression> &extensionTiers()
                            R"(verformung|d[eé]formation|allongement|compression|stauchung|)"
                            R"(allungamento|estensione|deformazione|flessione|)"
                            R"(alargamiento|elongaci[oó]n|deformaci[oó]n|flecha|)"
-                           R"(alongamento|deforma[cç][aã]o)",
+                           R"(alongamento|deforma[cç][aã]o|伸び|ひずみ|歪)",
                            QRegularExpression::CaseInsensitiveOption),
         QRegularExpression(R"(displacement|crosshead|traverse|position|stroke|lvdt|\bweg\b|)"
                            R"(corsa|traversa|spostamento|posizione|)"
-                           R"(desplazamiento|posici[oó]n|deslocamento|posi[cç][aã]o)",
+                           R"(desplazamiento|posici[oó]n|deslocamento|posi[cç][aã]o|ストローク|変位)",
                            QRegularExpression::CaseInsensitiveOption),
     };
     return tiers;
@@ -437,7 +468,7 @@ std::optional<double> parseQuantity(const QString &text, const QString &dimensio
     return v * *f;
 }
 
-TableOrError readTable(const QString &path)
+TableOrError readTable(const QString &path, const QString &fileSpecimen)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly))
@@ -446,8 +477,18 @@ TableOrError readTable(const QString &path)
 
     auto toUtf8 = QStringDecoder(QStringDecoder::Utf8);
     QString text = toUtf8(bytes);
-    if (toUtf8.hasError())
-        text = QString::fromLatin1(bytes);  // older machine software writes Latin-1
+    QString encodingNote;
+    if (toUtf8.hasError()) {
+        QStringDecoder sjis("windows-31j");  // Shift-JIS as Windows writes it
+        if (looksShiftJis(bytes) && sjis.isValid()) {
+            text = sjis(bytes);
+            encodingNote = "the file is in Shift-JIS (Japanese) and is read as such";
+        }
+        if (encodingNote.isEmpty() || sjis.hasError()) {
+            text = QString::fromLatin1(bytes);  // older machine software writes Latin-1
+            encodingNote.clear();
+        }
+    }
     QStringList lines = text.split('\n');
     for (QString &l : lines)
         if (l.endsWith('\r'))
@@ -465,6 +506,8 @@ TableOrError readTable(const QString &path)
     t.sha256 = QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex();
     t.delimiter = d.delim;
     t.decimal = d.decimal;
+    if (!encodingNote.isEmpty())
+        t.notes << encodingNote;
 
     // Names and units: the rows of the data's width directly above it.
     int namesRow = -1, unitsRow = -1;
@@ -491,7 +534,47 @@ TableOrError readTable(const QString &path)
             t.units << QString();
     }
 
-    const int preambleEnd = namesRow >= 0 ? namesRow : d.first;
+    // Specimens side by side (Shimadzu Trapezium): a row of titles just
+    // above the names, each title over a group of columns, every group with
+    // the same names (empty-named spacer columns after a group aside).
+    std::vector<int> starts;
+    int groupWidth = 0;
+    if (namesRow >= 1) {
+        const QStringList titles = fields(lines[namesRow - 1], d.delim);
+        for (int c = 0; c < titles.size() && c < d.width; ++c)
+            if (!titles[c].isEmpty())
+                starts.push_back(c);
+        bool same = starts.size() >= 2 && starts.front() == 0;
+        QStringList first;
+        for (size_t g = 0; same && g < starts.size(); ++g) {
+            const int end = g + 1 < starts.size() ? starts[g + 1] : d.width;
+            QStringList group = t.names.mid(starts[g], end - starts[g]);
+            while (!group.isEmpty() && group.back().isEmpty())
+                group.removeLast();
+            if (g == 0)
+                first = group;
+            same = !group.isEmpty() && group == first;
+        }
+        if (same) {
+            groupWidth = int(first.size());
+            for (int c : starts)
+                t.fileSpecimens << titles[c];
+        } else {
+            starts.clear();
+        }
+    }
+    int chosen = 0;
+    if (!fileSpecimen.isEmpty()) {
+        chosen = int(t.fileSpecimens.indexOf(fileSpecimen.trimmed()));
+        if (chosen < 0)
+            return {std::nullopt,
+                    t.fileSpecimens.isEmpty()
+                        ? path + " holds one specimen, not one named \"" + fileSpecimen + "\""
+                        : path + " has no specimen \"" + fileSpecimen + "\"; it has "
+                              + t.fileSpecimens.join(", ")};
+    }
+
+    const int preambleEnd = !starts.empty() ? namesRow - 1 : namesRow >= 0 ? namesRow : d.first;
     static const QRegularExpression resultsTitle(R"(^results\s+table\b)",
                                                  QRegularExpression::CaseInsensitiveOption);
     for (int i = 0; i < preambleEnd; ++i) {
@@ -561,6 +644,59 @@ TableOrError readTable(const QString &path)
         const QStringList fs = fields(lines[i], d.delim);
         for (int c = 0; c < d.width; ++c)
             t.columns[c].push_back(*number(fs[c], d.decimal));
+    }
+
+    if (!starts.empty()) {
+        const int c0 = starts[size_t(chosen)];
+        t.fileSpecimen = t.fileSpecimens[chosen];
+        t.names = t.names.mid(c0, groupWidth);
+        t.units = t.units.mid(c0, groupWidth);
+        std::vector<std::vector<double>> cols(t.columns.begin() + c0,
+                                              t.columns.begin() + c0 + groupWidth);
+        // The specimen's rows end where all its cells are empty to the end;
+        // the rows below belong to longer specimens beside it.
+        size_t rows = cols[0].size();
+        while (rows > 0 && std::all_of(cols.begin(), cols.end(),
+                                       [&](const auto &col) { return std::isnan(col[rows - 1]); }))
+            --rows;
+        const size_t below = cols[0].size() - rows;
+        for (auto &col : cols)
+            col.resize(rows);
+        t.columns = std::move(cols);
+        t.notes << QString("the file holds %1 specimens side by side (%2); this is \"%3\", its "
+                           "%4 rows")
+                       .arg(t.fileSpecimens.size())
+                       .arg(t.fileSpecimens.join(", "))
+                       .arg(t.fileSpecimen)
+                       .arg(rows)
+                       + (below > 0 ? QString(", the %1 empty rows below them left out").arg(below)
+                                    : QString());
+    }
+
+    // A last column with no name, empty in every row, is a trailing
+    // delimiter (Shimadzu Trapezium ends every line with a comma).
+    if (t.names.size() > 2 && t.names.back().isEmpty()
+        && std::all_of(t.columns.back().begin(), t.columns.back().end(),
+                       [](double v) { return std::isnan(v); })) {
+        t.notes << QString("the file's last column has no name and is empty in every row (each "
+                           "line ends with a delimiter); it is left out");
+        t.names.removeLast();
+        t.units.removeLast();
+        t.columns.pop_back();
+    }
+
+    // Two columns of one name: a name chooses the first, and that is said.
+    for (int c = 0; c < t.names.size(); ++c) {
+        if (t.names[c].isEmpty() || findColumn(t.names, t.names[c]) != c)
+            continue;
+        QStringList units;
+        for (int k = c; k < t.names.size(); ++k)
+            if (t.names[k].compare(t.names[c], Qt::CaseInsensitive) == 0)
+                units << (t.units.value(k).isEmpty() ? QString("no unit") : t.units[k]);
+        if (units.size() > 1)
+            t.notes << QString("%1 columns are named \"%2\" (%3); the name means the first")
+                           .arg(units.size())
+                           .arg(t.names[c], units.join(", "));
     }
 
     // A leading column that is empty in every row and named by a number or

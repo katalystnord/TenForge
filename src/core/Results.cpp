@@ -74,6 +74,11 @@ QJsonObject resultsJson(const Profile &profile, const tf::analysis::AnalysisResu
         {"sha256", source.sha256},
         {"columns", QJsonObject{{"force", source.forceColumn}, {"extension", source.extensionColumn}}},
         {"notes", QJsonArray::fromStringList(source.notes)}};
+    if (!source.fileSpecimen.isEmpty()) {
+        QJsonObject src = root["source"].toObject();
+        src["specimen_in_file"] = source.fileSpecimen;
+        root["source"] = src;
+    }
     root["profile"] = QJsonObject{{"id", profile.id},
                                   {"title", profile.title},
                                   {"standard", profile.designation},
