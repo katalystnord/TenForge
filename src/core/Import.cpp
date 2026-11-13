@@ -163,14 +163,31 @@ const QRegularExpression &forceRe()
     return re;
 }
 
-const QRegularExpression &extensionRe()
+// The displacement column, in tiers: a column of the first tier that has
+// any wins, so an extensometer beats a named deformation, which beats the
+// crosshead. Several in one tier are left for the person to choose.
+const std::vector<QRegularExpression> &extensionTiers()
 {
-    static const QRegularExpression re(R"(extensometer|extension|elongation|strain|dehnung)",
-                                       QRegularExpression::CaseInsensitiveOption);
-    return re;
+    static const std::vector<QRegularExpression> tiers{
+        QRegularExpression(R"(extensometer)", QRegularExpression::CaseInsensitiveOption),
+        QRegularExpression(R"(extension|elongation|strain|dehnung|deflection|durchbiegung|)"
+                           R"(verformung|d[eé]formation|compression|stauchung)",
+                           QRegularExpression::CaseInsensitiveOption),
+        QRegularExpression(R"(displacement|crosshead|traverse|position|stroke)",
+                           QRegularExpression::CaseInsensitiveOption),
+    };
+    return tiers;
 }
 
-const char *kPreferExtensometer = "extensometer";
+QList<int> extensionCandidates(const QStringList &names)
+{
+    for (const auto &re : extensionTiers()) {
+        const QList<int> hits = matching(names, re);
+        if (!hits.isEmpty())
+            return hits;
+    }
+    return {};
+}
 
 QString listColumns(const QStringList &names)
 {
@@ -260,8 +277,16 @@ TableOrError readTable(const QString &path)
     const int preambleEnd = namesRow >= 0 ? namesRow : d.first;
     for (int i = 0; i < preambleEnd; ++i) {
         const QStringList fs = fields(lines[i], d.delim);
-        if (fs.size() >= 2 && !fs[0].isEmpty())
+        if (fs.size() >= 2 && !fs[0].isEmpty()) {
             t.preamble.push_back({fs[0], fs[1], fs.size() >= 3 ? fs[2] : QString()});
+            continue;
+        }
+        // "key   value unit", with no delimiter (ZwickRoell testXpert): the
+        // key ends at the first run of two or more spaces.
+        static const QRegularExpression spaced(R"(^\s*(\S.*?)\s{2,}(\S+)(?:\s+(\S.*?))?\s*$)");
+        const auto m = spaced.match(lines[i]);
+        if (fs.size() < 2 && m.hasMatch())
+            t.preamble.push_back({m.captured(1), m.captured(2), m.captured(3)});
     }
 
     t.columns.assign(d.width, {});
@@ -282,25 +307,15 @@ TensionImport toTension(const Table &t, const TensionMapping &m)
     };
 
     // --- Columns -----------------------------------------------------------------
-    auto choose = [&](const QString &given, const QRegularExpression &guess, const QString &what,
-                      const QString &prefer, int &col) -> QString {
+    auto choose = [&](const QString &given, const QList<int> &candidates, const QString &what,
+                      int &col) -> QString {
         if (!given.isEmpty()) {
             col = findColumn(t.names, given);
             if (col < 0)
                 return "no column named \"" + given + "\" for " + what + "; " + listColumns(t.names);
             return {};
         }
-        QList<int> hits = matching(t.names, guess);
-        if (hits.size() > 1 && !prefer.isEmpty()) {
-            const QList<int> preferred = matching(t.names, QRegularExpression(prefer,
-                                                  QRegularExpression::CaseInsensitiveOption));
-            QList<int> both;
-            for (int h : hits)
-                if (preferred.contains(h))
-                    both << h;
-            if (both.size() == 1)
-                hits = both;
-        }
+        const QList<int> &hits = candidates;
         if (hits.size() != 1)
             return QString("cannot tell which column is %1 (%2 candidates); name it. ")
                        .arg(what)
@@ -311,10 +326,10 @@ TensionImport toTension(const Table &t, const TensionMapping &m)
         return {};
     };
     int fc = -1, ec = -1;
-    QString err = choose(m.force, forceRe(), "force", {}, fc);
+    QString err = choose(m.force, matching(t.names, forceRe()), "force", fc);
     if (!err.isEmpty())
         return fail(err);
-    err = choose(m.extension, extensionRe(), "extension", kPreferExtensometer, ec);
+    err = choose(m.extension, extensionCandidates(t.names), "extension", ec);
     if (!err.isEmpty())
         return fail(err);
     out.forceColumn = t.names[fc];
@@ -343,7 +358,12 @@ TensionImport toTension(const Table &t, const TensionMapping &m)
                     + "\"); give a length (mm) or a strain (%)");
 
     // --- Geometry -----------------------------------------------------------------
-    if (m.area) {
+    if (!m.needsGeometry) {
+        out.input.area = 0;
+        out.input.gaugeLength = sf ? 1.0 : 0.0;
+        if (sf)
+            out.notes << "\"" + out.extensionColumn + "\" is a strain in " + eu + "; used as strain";
+    } else if (m.area) {
         out.input.area = *m.area;
     } else if (const PreambleEntry *p = preamble(t, {"So", "S0", "So [mm2]"})) {
         const auto a = parseQuantity(p->value + " " + p->unit, "area");
@@ -356,7 +376,8 @@ TensionImport toTension(const Table &t, const TensionMapping &m)
         return fail("the cross-section area S0 is not in the file; give it (e.g. 120.6 mm2)");
     }
 
-    if (sf) {
+    if (!m.needsGeometry) {
+    } else if (sf) {
         // The column is already a strain: extension over a unit gauge length.
         out.input.gaugeLength = 1.0;
         out.notes << "\"" + out.extensionColumn + "\" is a strain in " + eu
@@ -387,18 +408,8 @@ TensionImport toTension(const Table &t, const TensionMapping &m)
 
 namespace {
 
-QString guess(const Table &t, const QRegularExpression &re, const QString &prefer,
-              const QString &what, QString *why)
+QString guess(const Table &t, const QList<int> &hits, const QString &what, QString *why)
 {
-    QList<int> hits = matching(t.names, re);
-    if (hits.size() > 1 && !prefer.isEmpty()) {
-        QList<int> both;
-        for (int h : matching(t.names, QRegularExpression(prefer, QRegularExpression::CaseInsensitiveOption)))
-            if (hits.contains(h))
-                both << h;
-        if (both.size() == 1)
-            hits = both;
-    }
     if (hits.size() == 1)
         return t.names[hits.front()];
     if (why)
@@ -411,12 +422,12 @@ QString guess(const Table &t, const QRegularExpression &re, const QString &prefe
 
 QString guessForceColumn(const Table &t, QString *why)
 {
-    return guess(t, forceRe(), {}, "force", why);
+    return guess(t, matching(t.names, forceRe()), "force", why);
 }
 
 QString guessExtensionColumn(const Table &t, QString *why)
 {
-    return guess(t, extensionRe(), kPreferExtensometer, "extension", why);
+    return guess(t, extensionCandidates(t.names), "extension", why);
 }
 
 QString columnUnit(const Table &t, const QString &column)

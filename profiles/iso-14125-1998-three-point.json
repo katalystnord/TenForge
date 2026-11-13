@@ -1,0 +1,164 @@
+{
+  "format": "tenforge-profile",
+  "version": "1.0",
+  "id": "iso-14125-1998-three-point",
+  "profile_version": "0.1.0",
+  "title": "Fibre-reinforced plastic composites, determination of flexural properties, method A (three-point)",
+  "standard": {
+    "body": "ISO",
+    "number": "14125",
+    "edition": "1998"
+  },
+  "mode": "flexure",
+  "inputs": {
+    "fixture": "three-point",
+    "geometry": [
+      "width",
+      "thickness",
+      "span"
+    ],
+    "strain_source": "deflection",
+    "measured": [
+      "force",
+      "deflection"
+    ]
+  },
+  "conditioning": [
+    {
+      "step": "zero-point",
+      "method": "as-recorded",
+      "note": "Strains are counted from the recorded zero, after any preload the machine applied."
+    }
+  ],
+  "results": [
+    {
+      "id": "Ef",
+      "symbol": "E_f",
+      "name": "Flexural modulus",
+      "quantity": "modulus",
+      "unit": "Pa",
+      "method": {
+        "primitive": "linear-fit",
+        "fit": "regression",
+        "window": {
+          "axis": "strain",
+          "from": {
+            "value": 0.0005,
+            "unit": "1",
+            "source": {
+              "document": "ISO 14125:1998",
+              "clause": "4.9, 10.1.2, 10.2.2"
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Lower strain of the modulus window. From the publisher's public preview of ISO 14125:1998 (https://cdn.standards.iteh.ai/samples/23637/ba7c56f2f2f64e27a63392bf4f28baed/ISO-14125-1998.pdf); to be confirmed from the purchased text."
+          },
+          "to": {
+            "value": 0.0025,
+            "unit": "1",
+            "source": {
+              "document": "ISO 14125:1998",
+              "clause": "4.9, 10.1.2, 10.2.2"
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Upper strain of the modulus window. From the publisher's public preview of ISO 14125:1998 (https://cdn.standards.iteh.ai/samples/23637/ba7c56f2f2f64e27a63392bf4f28baed/ISO-14125-1998.pdf); to be confirmed from the purchased text."
+          }
+        }
+      },
+      "report": {
+        "unit": "GPa",
+        "rounding": {
+          "value": 0.01,
+          "unit": "GPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 14125:1998 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "sigma_fM",
+      "symbol": "σ_fM",
+      "name": "Flexural strength",
+      "quantity": "max-stress",
+      "unit": "Pa",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 14125:1998 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "epsilon_fM",
+      "symbol": "ε_fM",
+      "name": "Flexural strain at flexural strength",
+      "quantity": "strain-at-max",
+      "unit": "1",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.01,
+          "unit": "%",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 14125:1998 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "Fm",
+      "symbol": "F_m",
+      "name": "Maximum force",
+      "quantity": "max-force",
+      "unit": "N",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "N",
+        "rounding": {
+          "value": 0.1,
+          "unit": "N",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 14125:1998 to be checked for a rule of its own."
+        }
+      }
+    }
+  ],
+  "validity": []
+}

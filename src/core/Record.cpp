@@ -183,24 +183,38 @@ bool readChannel(const QString &path, const QString &column, std::vector<double>
 } // namespace
 
 QString writeRecord(const QString &dir, const Table &source, const TensionImport &imported,
-                    const Specimen &specimen, const Profile &profile, QJsonObject results)
+                    const Specimen &specimen, const Profile &profile, QJsonObject results,
+                    const Fixture &fixture, const QString &compliancePath)
 {
     if (QDir(dir).exists() && !QDir(dir).isEmpty(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden))
         return dir + " already holds files; a record is only written into a new or empty folder";
 
     // The specimen in test.json must be the one the results were computed
     // with, or the record would contradict itself.
+    // (Tension carries its geometry in the import; the curve modes compute
+    // stress and strain from the specimen and fixture written here.)
     const auto area = crossSection(specimen);
     if (!area.area)
         return "the specimen has no cross-section area: " + area.reason;
-    if (std::fabs(*area.area - imported.input.area) > 1e-12 * std::fabs(*area.area))
-        return QString("the specimen's cross-section area (%1 mm2) is not the area the analysis "
-                       "used (%2 mm2)")
-            .arg(*area.area * 1e6, 0, 'g', 10)
-            .arg(imported.input.area * 1e6, 0, 'g', 10);
-    if (!imported.extensionIsStrain
-        && (!specimen.gaugeLength || *specimen.gaugeLength != imported.input.gaugeLength))
-        return "the specimen's gauge length is not the gauge length the analysis used";
+    if (profile.mode == "tension") {
+        if (std::fabs(*area.area - imported.input.area) > 1e-12 * std::fabs(*area.area))
+            return QString("the specimen's cross-section area (%1 mm2) is not the area the "
+                           "analysis used (%2 mm2)")
+                .arg(*area.area * 1e6, 0, 'g', 10)
+                .arg(imported.input.area * 1e6, 0, 'g', 10);
+        if (!imported.extensionIsStrain
+            && (!specimen.gaugeLength || *specimen.gaugeLength != imported.input.gaugeLength))
+            return "the specimen's gauge length is not the gauge length the analysis used";
+    }
+    if (profile.mode == "flexure" && !fixture.span)
+        return "a bending record needs the support span";
+    QByteArray complianceBytes;
+    if (!compliancePath.isEmpty()) {
+        QFile cf(compliancePath);
+        if (!cf.open(QIODevice::ReadOnly))
+            return "cannot read the compliance table " + compliancePath + " to keep it in the record";
+        complianceBytes = cf.readAll();
+    }
 
     QFile in(source.path);
     if (!in.open(QIODevice::ReadOnly))
@@ -220,8 +234,11 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
     const int ec = source.names.indexOf(imported.extensionColumn);
     if (fc < 0 || ec < 0)
         return "the imported columns are not in the source table";
-    const QString extId = imported.extensionIsStrain ? "strain" : "extension";
-    const QString extSi = imported.extensionIsStrain ? "strain_1" : "extension_m";
+    const QString disp = profile.mode == "flexure"       ? "deflection"
+                         : profile.mode == "compression" ? "deformation"
+                                                         : "extension";
+    const QString extId = imported.extensionIsStrain ? "strain" : disp;
+    const QString extSi = imported.extensionIsStrain ? "strain_1" : disp + "_m";
     std::vector<double> extSiValues = imported.input.extension;
     if (imported.extensionIsStrain)
         for (double &v : extSiValues)
@@ -242,20 +259,28 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
                                                   {"column", column},
                                                   {"unit", fileUnit}}}};
     };
-    const QJsonObject test{
-        {"mode", "tension"},
+    QString complianceRel;
+    if (!compliancePath.isEmpty()) {
+        complianceRel = "source/compliance-" + QFileInfo(compliancePath).fileName();
+        w.write(complianceRel, complianceBytes, {{"role", "compliance"}});
+    }
+    QJsonObject test{
+        {"mode", profile.mode},
         {"specimen", specimenJson(specimen)},
+        {"fixture", fixtureJson(profile.fixture, fixture)},
         {"profile", QJsonObject{{"id", profile.id},
                                 {"version", profile.profileVersion},
                                 {"sha256", QString::fromLatin1(profile.sha256)},
                                 {"shipped", profile.shipped}}},
         {"machine", QJsonObject{{"name", ""}, {"driver", "import"}, {"driver_version", ""}}},
         {"channels", QJsonObject{{"force", channel("force", "N", imported.forceColumn, imported.forceUnit)},
-                                 {extId, channel(imported.extensionIsStrain ? "strain" : "extension",
+                                 {extId, channel(imported.extensionIsStrain ? "strain" : disp,
                                                  imported.extensionIsStrain ? "1" : "m",
                                                  imported.extensionColumn, imported.extensionUnit)}}},
         {"calibration", QJsonArray()},
         {"operator", ""}};
+    if (!complianceRel.isEmpty())
+        test["compliance"] = QJsonObject{{"file", complianceRel}, {"sha256", w.shaOf(complianceRel)}};
     w.write("test.json", jsonBytes(test), {{"role", "metadata"}});
 
     // Results inside a record point into it. The manifest lists the results
@@ -337,11 +362,14 @@ OpenedRecord openRecord(const QString &dirIn)
         r.error = err;
         return r;
     }
-    if (test.value("mode").toString() != "tension") {
-        r.error = "the record is a " + test.value("mode").toString()
-                  + " test; this TenForge analyses tension tests";
+    r.mode = test.value("mode").toString();
+    if (r.mode != "tension" && r.mode != "compression" && r.mode != "flexure") {
+        r.error = "the record is a " + r.mode
+                  + " test; this TenForge analyses tension, compression and flexure tests";
         return r;
     }
+    r.fixture = fixtureFromJson(test.value("fixture").toObject());
+    r.complianceFile = test.value("compliance").toObject().value("file").toString();
     const auto spec = specimenFromJson(test.value("specimen").toObject(), &err);
     if (!spec) {
         r.error = err;
@@ -355,9 +383,12 @@ OpenedRecord openRecord(const QString &dirIn)
 
     const QJsonObject channels = test.value("channels").toObject();
     const bool strain = channels.contains("strain");
-    const QString extId = strain ? "strain" : "extension";
+    const QString disp = r.mode == "flexure"       ? "deflection"
+                         : r.mode == "compression" ? "deformation"
+                                                   : "extension";
+    const QString extId = strain ? "strain" : disp;
     if (!channels.contains("force") || !channels.contains(extId)) {
-        r.error = "the record has no force and extension channels to analyse";
+        r.error = "the record has no force and " + disp + " channels to analyse";
         return r;
     }
     const QJsonObject fsrc = channels.value("force").toObject().value("source").toObject();
@@ -369,7 +400,7 @@ OpenedRecord openRecord(const QString &dirIn)
     r.extensionUnit = esrc.value("unit").toString();
 
     if (!readChannel(dir + "/channels/force.csv", "force_N", &r.input.force, &err)
-        || !readChannel(dir + "/channels/" + extId + ".csv", strain ? "strain_1" : "extension_m",
+        || !readChannel(dir + "/channels/" + extId + ".csv", strain ? "strain_1" : disp + "_m",
                         &r.input.extension, &err)) {
         r.error = err;
         return r;
@@ -384,7 +415,10 @@ OpenedRecord openRecord(const QString &dirIn)
         return r;
     }
     r.input.area = *area.area;
-    if (strain) {
+    if (r.mode == "flexure") {
+        r.input.area = 0;
+        r.input.gaugeLength = strain ? 1.0 : 0.0;
+    } else if (strain) {
         r.input.gaugeLength = 1.0;
     } else if (r.specimen.gaugeLength) {
         r.input.gaugeLength = *r.specimen.gaugeLength;

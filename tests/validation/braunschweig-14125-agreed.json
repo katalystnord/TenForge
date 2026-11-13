@@ -1,0 +1,364 @@
+{
+  "dataset": "Osten, Steinmetz, Charif, Voelkerink (2025): Moisture uptake, flexural properties, and mode I fracture toughness of hemp fiber reinforced polymer laminates with embedded capacitive sensor. Zenodo, doi:10.5281/zenodo.17611621. CC BY 4.0.",
+  "data": {
+    "url": "https://zenodo.org/records/17611621/files/Four-Point%20Bending%20Tests.zip?download=1",
+    "sha256": "f1837dc5027b41937e2bb5721a55480234a1a7e09a02cb34ea8703f85cf300c8"
+  },
+  "method": "ISO 14125:1998 method B (four-point), class III: span 45 mm, loading span 15 mm. testXpert III's 'Verformung' is the crosshead travel (identical to 'Traversenweg' in every file), which moves the loading points; its strains reproduce only when deflection is taken at the loading points. Regression modulus between 0.05 % and 0.25 % strain, strain counted from the recorded zero after a 0.1 N preload.",
+  "transcribed_from": "The four 'Test rig protocolls' PDFs in the same archive (f', f'', Ef, N, eps_fM, R2, as printed), and sigma_fM to three decimals from each CSV's own header ('Maximale Biegespannung'). Transcribed 2026-11-13.",
+  "tolerance": "Half a unit in the last digit testXpert printed, for every quantity; N (the number of samples in the modulus regression) exactly.",
+  "specimens": [
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_back_dried/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cback_dried_class3_1.CSV",
+      "specimen": "Hanf80°Cgetrocknet_90min_15",
+      "testxpert": {
+        "f1_MPa": "1.680",
+        "f2_MPa": "13.794",
+        "Ef_GPa": "6.22",
+        "N": 284,
+        "epsilon_fM_percent": "5.2",
+        "R2": "0.99967",
+        "sigma_fM_MPa": "123.678"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_back_dried/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cback_dried_class3_2.CSV",
+      "specimen": "Hanf80°Cgetrocknet_90min_16",
+      "testxpert": {
+        "f1_MPa": "2.474",
+        "f2_MPa": "13.264",
+        "Ef_GPa": "5.41",
+        "N": 278,
+        "epsilon_fM_percent": "5.4",
+        "R2": "0.99866",
+        "sigma_fM_MPa": "114.864"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_back_dried/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cback_dried_class3_3.CSV",
+      "specimen": "Hanf80°Cgetrocknet_90min_17",
+      "testxpert": {
+        "f1_MPa": "1.508",
+        "f2_MPa": "12.791",
+        "Ef_GPa": "5.80",
+        "N": 231,
+        "epsilon_fM_percent": "6.3",
+        "R2": "0.99892",
+        "sigma_fM_MPa": "123.503"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_back_dried/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cback_dried_class3_4.CSV",
+      "specimen": "Hanf80°Cgetrocknet_90min_18",
+      "testxpert": {
+        "f1_MPa": "0.582",
+        "f2_MPa": "9.482",
+        "Ef_GPa": "4.49",
+        "N": 239,
+        "epsilon_fM_percent": "5.5",
+        "R2": "0.99690",
+        "sigma_fM_MPa": "115.274"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_back_dried/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cback_dried_class3_5.CSV",
+      "specimen": "Hanf80°Cgetrocknet_90min_19",
+      "testxpert": {
+        "f1_MPa": "2.122",
+        "f2_MPa": "15.265",
+        "Ef_GPa": "6.67",
+        "N": 251,
+        "epsilon_fM_percent": "4.3",
+        "R2": "0.99988",
+        "sigma_fM_MPa": "123.649"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_back_dried/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cback_dried_class3_6.CSV",
+      "specimen": "Hanf80°Cgetrocknet_90min_20",
+      "testxpert": {
+        "f1_MPa": "1.659",
+        "f2_MPa": "13.566",
+        "Ef_GPa": "6.15",
+        "N": 270,
+        "epsilon_fM_percent": "5.0",
+        "R2": "0.99943",
+        "sigma_fM_MPa": "133.718"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_back_dried/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cback_dried_class3_7.CSV",
+      "specimen": "Hanf80°Cgetrocknet_90min_21",
+      "testxpert": {
+        "f1_MPa": "2.341",
+        "f2_MPa": "13.910",
+        "Ef_GPa": "5.91",
+        "N": 267,
+        "epsilon_fM_percent": "5.0",
+        "R2": "0.99941",
+        "sigma_fM_MPa": "118.848"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist/4PB_DIN14125_NFK_Osten_19122024_Hemp80_C_moist_without_sensor_class3_1.CSV",
+      "specimen": "Hanf80°Cfeucht8",
+      "testxpert": {
+        "f1_MPa": "1.336",
+        "f2_MPa": "9.310",
+        "Ef_GPa": "4.03",
+        "N": 269,
+        "epsilon_fM_percent": "5.7",
+        "R2": "0.99979",
+        "sigma_fM_MPa": "120.259"
+      },
+      "loading_span_mm": 15,
+      "excluded": "The file's own header gives a maximum flexural stress of 120.259 MPa; its force data peak at 242.2 N, which at its stated width, thickness and span is 101.1 MPa. The curve in the file is not the one testXpert evaluated, so it cannot check TenForge against testXpert."
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist/4PB_DIN14125_NFK_Osten_19122024_Hemp80_C_moist_without_sensor_class3_2.CSV",
+      "specimen": "Hanf80°Cfeucht9",
+      "testxpert": {
+        "f1_MPa": "1.997",
+        "f2_MPa": "12.439",
+        "Ef_GPa": "5.23",
+        "N": 270,
+        "epsilon_fM_percent": "5.9",
+        "R2": "0.99926",
+        "sigma_fM_MPa": "144.473"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist/4PB_DIN14125_NFK_Osten_19122024_Hemp80_C_moist_without_sensor_class3_3.CSV",
+      "specimen": "Hanf80°Cfeucht10",
+      "testxpert": {
+        "f1_MPa": "1.840",
+        "f2_MPa": "10.014",
+        "Ef_GPa": "4.11",
+        "N": 260,
+        "epsilon_fM_percent": "6.4",
+        "R2": "0.99948",
+        "sigma_fM_MPa": "121.358"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist/4PB_DIN14125_NFK_Osten_19122024_Hemp80_C_moist_without_sensor_class3_4.CSV",
+      "specimen": "Hanf80°Cfeucht11",
+      "testxpert": {
+        "f1_MPa": "1.246",
+        "f2_MPa": "8.985",
+        "Ef_GPa": "3.92",
+        "N": 241,
+        "epsilon_fM_percent": "7.0",
+        "R2": "0.99980",
+        "sigma_fM_MPa": "125.262"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist/4PB_DIN14125_NFK_Osten_19122024_Hemp80_C_moist_without_sensor_class3_5.CSV",
+      "specimen": "Hanf80°Cfeucht12",
+      "testxpert": {
+        "f1_MPa": "0.991",
+        "f2_MPa": "7.086",
+        "Ef_GPa": "3.07",
+        "N": 246,
+        "epsilon_fM_percent": "6.6",
+        "R2": "0.99971",
+        "sigma_fM_MPa": "131.719"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist/4PB_DIN14125_NFK_Osten_19122024_Hemp80_C_moist_without_sensor_class3_6.CSV",
+      "specimen": "Hanf80°Cfeucht13",
+      "testxpert": {
+        "f1_MPa": "1.261",
+        "f2_MPa": "8.181",
+        "Ef_GPa": "3.51",
+        "N": 250,
+        "epsilon_fM_percent": "6.6",
+        "R2": "0.99968",
+        "sigma_fM_MPa": "131.476"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist/4PB_DIN14125_NFK_Osten_19122024_Hemp80_C_moist_without_sensor_class3_7.CSV",
+      "specimen": "Hanf80°Cfeucht14",
+      "testxpert": {
+        "f1_MPa": "1.259",
+        "f2_MPa": "8.953",
+        "Ef_GPa": "3.89",
+        "N": 236,
+        "epsilon_fM_percent": "6.8",
+        "R2": "0.99987",
+        "sigma_fM_MPa": "138.383"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist_with_sensor/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cmoist_with_sensor_classe3_1.CSV",
+      "specimen": "Hanf80°Cfeucht_mit_Sensor1",
+      "testxpert": {
+        "f1_MPa": "0.922",
+        "f2_MPa": "7.964",
+        "Ef_GPa": "3.57",
+        "N": 247,
+        "epsilon_fM_percent": "6.3",
+        "R2": "0.99987",
+        "sigma_fM_MPa": "116.381"
+      },
+      "loading_span_mm": 15,
+      "excluded": "The file's own header gives a maximum flexural stress of 116.381 MPa; its force data peak at 1.2 % less. As for feucht8, the curve in the file is not the one testXpert evaluated."
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist_with_sensor/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cmoist_with_sensor_classe3_2.CSV",
+      "specimen": "Hanf80°Cfeucht_mit_Sensor2",
+      "testxpert": {
+        "f1_MPa": "0.878",
+        "f2_MPa": "5.759",
+        "Ef_GPa": "2.43",
+        "N": 235,
+        "epsilon_fM_percent": "6.9",
+        "R2": "0.99734",
+        "sigma_fM_MPa": "132.448"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist_with_sensor/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cmoist_with_sensor_classe3_3.CSV",
+      "specimen": "Hanf80°Cfeucht_mit_Sensor3",
+      "testxpert": {
+        "f1_MPa": "1.184",
+        "f2_MPa": "7.539",
+        "Ef_GPa": "3.21",
+        "N": 240,
+        "epsilon_fM_percent": "6.3",
+        "R2": "0.99992",
+        "sigma_fM_MPa": "104.453"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist_with_sensor/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cmoist_with_sensor_classe3_4.CSV",
+      "specimen": "Hanf80°Cfeucht_mit_Sensor4",
+      "testxpert": {
+        "f1_MPa": "1.144",
+        "f2_MPa": "8.155",
+        "Ef_GPa": "3.56",
+        "N": 240,
+        "epsilon_fM_percent": "6.4",
+        "R2": "0.99991",
+        "sigma_fM_MPa": "112.203"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist_with_sensor/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cmoist_with_sensor_classe3_5.CSV",
+      "specimen": "Hanf80°Cfeucht_mit_Sensor5",
+      "testxpert": {
+        "f1_MPa": "1.315",
+        "f2_MPa": "8.521",
+        "Ef_GPa": "3.70",
+        "N": 231,
+        "epsilon_fM_percent": "6.8",
+        "R2": "0.99960",
+        "sigma_fM_MPa": "116.773"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist_with_sensor/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cmoist_with_sensor_classe3_6.CSV",
+      "specimen": "Hanf80°Cfeucht_mit_Sensor6",
+      "testxpert": {
+        "f1_MPa": "0.896",
+        "f2_MPa": "6.916",
+        "Ef_GPa": "3.06",
+        "N": 235,
+        "epsilon_fM_percent": "6.8",
+        "R2": "0.99844",
+        "sigma_fM_MPa": "130.812"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_moist_with_sensor/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cmoist_with_sensor_classe3_7.CSV",
+      "specimen": "Hanf80°Cfeucht_mit_Sensor7",
+      "testxpert": {
+        "f1_MPa": "0.245",
+        "f2_MPa": "4.878",
+        "Ef_GPa": "2.41",
+        "N": 229,
+        "epsilon_fM_percent": "7.5",
+        "R2": "0.99393",
+        "sigma_fM_MPa": "129.054"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_reference/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cdry_reference_class3_1.CSV",
+      "specimen": "Hanf80°Ctrocken_Ref_32",
+      "testxpert": {
+        "f1_MPa": "1.679",
+        "f2_MPa": "18.846",
+        "Ef_GPa": "8.54",
+        "N": 262,
+        "epsilon_fM_percent": "2.3",
+        "R2": "0.99103",
+        "sigma_fM_MPa": "174.162"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_reference/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cdry_reference_class3_2.CSV",
+      "specimen": "Hanf80°Ctrocken_Ref_29",
+      "testxpert": {
+        "f1_MPa": "1.428",
+        "f2_MPa": "16.066",
+        "Ef_GPa": "7.18",
+        "N": 288,
+        "epsilon_fM_percent": "2.2",
+        "R2": "0.98679",
+        "sigma_fM_MPa": "170.553"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_reference/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cdry_reference_class3_3.CSV",
+      "specimen": "Hanf80°Ctrocken_Ref_30",
+      "testxpert": {
+        "f1_MPa": "4.800",
+        "f2_MPa": "29.031",
+        "Ef_GPa": "12.2",
+        "N": 286,
+        "epsilon_fM_percent": "2.4",
+        "R2": "0.99957",
+        "sigma_fM_MPa": "192.537"
+      },
+      "loading_span_mm": 15
+    },
+    {
+      "file": "Four-Point Bending Tests/force_displacement_data/Hemp_reference/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cdry_reference_class3_4.CSV",
+      "specimen": "Hanf80°Ctrocken_Ref_31",
+      "testxpert": {
+        "f1_MPa": "4.470",
+        "f2_MPa": "28.608",
+        "Ef_GPa": "12.2",
+        "N": 264,
+        "epsilon_fM_percent": "2.2",
+        "R2": "0.99986",
+        "sigma_fM_MPa": "183.763"
+      },
+      "loading_span_mm": 15
+    }
+  ]
+}

@@ -11,6 +11,7 @@
 #include "core/Profile.h"
 
 #include <QDateTime>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
 #include <QStringList>
@@ -29,8 +30,13 @@ struct SourceInfo {
 // Empty when the unit cannot be converted.
 QString reportedText(double siValue, const ProfileResult &r);
 
-QJsonObject resultsJson(const Profile &profile, const tf::analysis::TensionResult &result,
-                        const SourceInfo &source, const QDateTime &computedUtc);
+// validity: the profile's checks as evaluated on this specimen and fixture,
+// each {"id", "status": "met" | "not-met" | "not-checked", "detail"}. A
+// check not met, or not checked, is a reason the results are not to the
+// standard.
+QJsonObject resultsJson(const Profile &profile, const tf::analysis::AnalysisResult &result,
+                        const SourceInfo &source, const QDateTime &computedUtc,
+                        const QJsonArray &validity = {});
 
 // The spreadsheet view: one row per result.
 QString resultsCsv(const QJsonObject &results);

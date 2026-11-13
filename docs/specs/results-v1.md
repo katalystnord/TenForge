@@ -125,3 +125,18 @@ SHA-256. Specified with Phase 2, when the GUI first handles series.
    certificates can be recorded, every analysis is `aligned`.
 2. **Reported values are stored as text**, so what was reported is
    exactly what is stored; the unrounded SI value sits beside it.
+
+## 6. Additions in release 0.2 (Phase 3; additive, for David's review)
+
+- `profile` gains `mode` and `fixture` (as the profile names them).
+- `validity`: the profile's checks as evaluated on this specimen and
+  fixture, each `{"id", "status", "value", "detail"}` with `status`
+  `met`, `not-met` or `not-checked` (a quantity it needs was not given).
+- Conformity reasons gain `validity-not-met` and `validity-not-checked`;
+  either keeps the results from being to the standard.
+- `no-strain-calibration` names what measured the displacement: the
+  extensometer (ISO 9513) in tension, the deflection or deformation
+  measurement otherwise.
+- Compression and bending are analysed with the test's own direction
+  positive. When the file records them negative, a note in
+  `source.notes` says so; the record keeps the file's signs.

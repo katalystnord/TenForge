@@ -25,13 +25,19 @@ namespace tf::core {
 // results document is the one resultsJson() made from the same import;
 // its source path and record inputs are rewritten to point inside the
 // record. Returns an error, empty on success.
+// The fixture is written for the profile's fixture kind; a compliance table
+// used in the analysis is kept byte for byte under source/.
 QString writeRecord(const QString &dir, const Table &source, const TensionImport &imported,
-                    const Specimen &specimen, const Profile &profile, QJsonObject results);
+                    const Specimen &specimen, const Profile &profile, QJsonObject results,
+                    const Fixture &fixture = {}, const QString &compliancePath = {});
 
 struct OpenedRecord {
     QString error;                 // non-empty: the record could not be read
     QString dir;
+    QString mode;                  // "tension", "compression", "flexure"
     Specimen specimen;
+    Fixture fixture;
+    QString complianceFile;        // relative to dir; empty when none was used
     tf::analysis::TensionInput input;
     QString profileId, profileVersion;
     QByteArray profileSha256;

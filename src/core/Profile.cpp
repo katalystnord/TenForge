@@ -72,6 +72,234 @@ struct Reader {
     }
 };
 
+// One shared rule read from several results (a test has one yield rule, one
+// break rule): every result that gives it must give the same numbers.
+struct Shared {
+    std::optional<double> a, b;
+    QString owner;
+    QString take(double x, double y, const QString &id, const QString &what)
+    {
+        if (a && (*a != x || *b != y))
+            return "result " + id + " gives a different " + what + " from " + owner
+                   + "; a test has one " + what;
+        if (!a) {
+            a = x;
+            b = y;
+            owner = id;
+        }
+        return {};
+    }
+};
+
+QString readReport(const QJsonObject &r, ProfileResult &pr, Reader &rd)
+{
+    const QJsonObject report = r.value("report").toObject();
+    pr.reportUnit = report.value("unit").toString(pr.unit);
+    if (report.contains("rounding")) {
+        const auto step = rd.number(report, "rounding", "results." + pr.id + ".report.rounding");
+        if (!step)
+            return rd.error;
+        pr.rounding = *step;
+    }
+    return {};
+}
+
+QString readValidity(const QJsonObject &root, Profile &p, Reader &rd)
+{
+    static const QStringList known{"width", "thickness", "span", "loading_span", "length"};
+    for (const QJsonValue &v : root.value("validity").toArray()) {
+        const QJsonObject c = v.toObject();
+        ValidityCheck vc;
+        vc.id = c.value("id").toString();
+        if (c.value("check").toString() != "ratio")
+            return "validity check " + vc.id + " is \"" + c.value("check").toString()
+                   + "\"; the engine knows \"ratio\"";
+        vc.numerator = c.value("numerator").toString();
+        vc.denominator = c.value("denominator").toString();
+        for (const QString &q : {vc.numerator, vc.denominator})
+            if (!known.contains(q))
+                return "validity check " + vc.id + " names \"" + q + "\"; it can use "
+                       + known.join(", ");
+        const auto mn = rd.number(c, "min", "validity." + vc.id + ".min");
+        const auto mx = rd.number(c, "max", "validity." + vc.id + ".max");
+        if (!mn || !mx)
+            return rd.error;
+        vc.min = *mn;
+        vc.max = *mx;
+        p.validity.push_back(vc);
+    }
+    return {};
+}
+
+// Compression and flexure: the curve model's quantities.
+QString readCurve(const QJsonObject &root, Profile &p, Reader &rd)
+{
+    using Q = tf::analysis::CurveQuantity;
+    struct Kind {
+        Q q;
+        QStringList primitives;
+        const char *unit;
+    };
+    static const std::map<QString, Kind> kinds{
+        {"modulus", {Q::Modulus, {"linear-fit", "max-slope"}, "Pa"}},
+        {"max-stress", {Q::MaxStress, {"maximum"}, "Pa"}},
+        {"strain-at-max", {Q::StrainAtMax, {"maximum"}, "1"}},
+        {"max-force", {Q::MaxForce, {"maximum"}, "N"}},
+        {"yield-stress", {Q::YieldStress, {"zero-slope"}, "Pa"}},
+        {"yield-strain", {Q::YieldStrain, {"zero-slope"}, "1"}},
+        {"stress-at-strain", {Q::StressAtStrain, {"value-at"}, "Pa"}},
+        {"stress-at-deflection", {Q::StressAtStrain, {"value-at"}, "Pa"}},
+        {"break-stress", {Q::BreakStress, {"break"}, "Pa"}},
+        {"break-strain", {Q::BreakStrain, {"break"}, "1"}},
+        {"peak-stress", {Q::PeakStress, {"max-within-window"}, "Pa"}},
+        {"strain-at-peak", {Q::StrainAtPeak, {"max-within-window"}, "1"}},
+    };
+
+    p.fixture = root.value("inputs").toObject().value("fixture").toString();
+    const QStringList fixtures = p.mode == "flexure" ? QStringList{"three-point", "four-point"}
+                                                     : QStringList{"platens"};
+    if (!fixtures.contains(p.fixture))
+        return "profile " + p.id + " names the fixture \"" + p.fixture + "\"; for " + p.mode
+               + " it must be " + fixtures.join(" or ");
+
+    tf::analysis::CurveMethod &m = p.curve;
+    for (const QJsonValue &c : root.value("conditioning").toArray()) {
+        const QJsonObject step = c.toObject();
+        if (step.value("step").toString() != "zero-point")
+            return "conditioning step \"" + step.value("step").toString()
+                   + "\" is not one the engine has";
+        const QString how = step.value("method").toString();
+        if (how == "elastic-line")
+            m.zero = tf::analysis::CurveMethod::Zero::ElasticLine;
+        else if (how == "as-recorded")
+            m.zero = tf::analysis::CurveMethod::Zero::AsRecorded;
+        else
+            return "conditioning zero-point method \"" + how + "\" is not one the engine has";
+    }
+
+    Shared yieldRule, breakRule, peakRule;
+    bool haveModulus = false;
+    for (const QJsonValue &rv : root.value("results").toArray()) {
+        const QJsonObject r = rv.toObject();
+        ProfileResult pr;
+        pr.id = r.value("id").toString();
+        pr.symbol = r.value("symbol").toString();
+        pr.name = r.value("name").toString();
+        pr.quantity = r.value("quantity").toString();
+        pr.key = pr.id;
+        pr.unit = r.value("unit").toString();
+        const QJsonObject method = r.value("method").toObject();
+        pr.primitive = method.value("primitive").toString();
+        const QString base = "results." + pr.id + ".method";
+
+        const auto k = kinds.find(pr.quantity);
+        if (k == kinds.end())
+            return "result " + pr.id + " asks for quantity \"" + pr.quantity
+                   + "\", which the engine does not compute for " + p.mode;
+        if (!k->second.primitives.contains(pr.primitive))
+            return "result " + pr.id + " names primitive \"" + pr.primitive + "\"; the engine computes "
+                   + pr.quantity + " with \"" + k->second.primitives.join("\" or \"") + "\"";
+        if (pr.unit != k->second.unit)
+            return "result " + pr.id + " is in \"" + pr.unit + "\"; " + pr.quantity + " is in \""
+                   + k->second.unit + "\"";
+        for (const auto &other : p.results)
+            if (other.id == pr.id)
+                return "two results have the id " + pr.id;
+
+        tf::analysis::CurveRequest q{pr.id.toStdString(), k->second.q, 0.0};
+        QString err;
+        switch (k->second.q) {
+        case Q::Modulus: {
+            if (haveModulus)
+                return "result " + pr.id + " is a second modulus; a profile has one";
+            haveModulus = true;
+            if (pr.primitive == "linear-fit") {
+                const QJsonObject w = method.value("window").toObject();
+                if (w.value("axis").toString() != "strain")
+                    return "result " + pr.id + ": the curve modes take the modulus window on strain";
+                const auto from = rd.number(w, "from", base + ".window.from");
+                const auto to = rd.number(w, "to", base + ".window.to");
+                if (!from || !to)
+                    return rd.error;
+                m.modulus = tf::analysis::CurveMethod::Modulus::StrainWindow;
+                m.modulusFrom = *from;
+                m.modulusTo = *to;
+            } else {
+                const auto w = rd.number(method, "width", base + ".width");
+                if (!w)
+                    return rd.error;
+                m.modulus = tf::analysis::CurveMethod::Modulus::MaxSlope;
+                m.maxSlopeWidth = *w;
+            }
+            break;
+        }
+        case Q::YieldStress:
+        case Q::YieldStrain: {
+            const auto d = rd.number(method, "min_drop", base + ".min_drop");
+            const auto sp = rd.number(method, "min_span", base + ".min_span");
+            if (!d || !sp)
+                return rd.error;
+            err = yieldRule.take(*d, *sp, pr.id, "yield rule");
+            m.yieldMinDrop = *d;
+            m.yieldMinSpan = *sp;
+            break;
+        }
+        case Q::BreakStress:
+        case Q::BreakStrain: {
+            const auto ratio = rd.number(method, "ratio", base + ".ratio");
+            const auto d = rd.number(method, "min_drop", base + ".min_drop");
+            if (!ratio || !d)
+                return rd.error;
+            err = breakRule.take(*ratio, *d, pr.id, "break rule");
+            m.breakRatio = *ratio;
+            m.breakMinDrop = *d;
+            break;
+        }
+        case Q::PeakStress:
+        case Q::StrainAtPeak: {
+            const auto at = rd.number(method, "strain", base + ".strain");
+            const auto d = rd.number(method, "min_drop", base + ".min_drop");
+            if (!at || !d)
+                return rd.error;
+            err = peakRule.take(*at, *d, pr.id, "strength window");
+            q.at = *at;
+            m.peakMinDrop = *d;
+            break;
+        }
+        case Q::StressAtStrain:
+            if (pr.quantity == "stress-at-deflection") {
+                if (p.mode != "flexure")
+                    return "result " + pr.id + ": a stress at a deflection needs a flexure profile";
+                const auto k2 = rd.number(method, "deflection_per_thickness",
+                                          base + ".deflection_per_thickness");
+                if (!k2)
+                    return rd.error;
+                pr.deflectionPerThickness = *k2;
+            } else {
+                const auto at = rd.number(method, "strain", base + ".strain");
+                if (!at)
+                    return rd.error;
+                q.at = *at;
+            }
+            break;
+        default:
+            break;
+        }
+        if (!err.isEmpty())
+            return err;
+        if (const QString e2 = readReport(r, pr, rd); !e2.isEmpty())
+            return e2;
+        m.requests.push_back(q);
+        p.results.push_back(pr);
+    }
+    if (p.results.empty())
+        return "profile " + p.id + " asks for no results";
+    if (m.zero == tf::analysis::CurveMethod::Zero::ElasticLine && !haveModulus)
+        return "profile " + p.id + " counts strain from the elastic line but asks for no modulus, "
+               "which that line is";
+    return {};
+}
+
 } // namespace
 
 QStringList shippedProfiles()
@@ -125,14 +353,23 @@ ProfileOrError loadProfile(const QString &pathOrId)
     p.path = path;
     p.shipped = shipped;
     p.sha256 = QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex();
-    if (p.mode != "tension")
+    if (p.mode != "tension" && p.mode != "compression" && p.mode != "flexure")
         return fail("profile " + p.id + " is for mode \"" + p.mode
-                    + "\"; this TenForge analyses tension only");
+                    + "\"; this TenForge analyses tension, compression and flexure");
+
+    Reader rd{&p.parameters, {}};
+    if (const QString err = readValidity(root, p, rd); !err.isEmpty())
+        return fail(err);
+    if (p.mode != "tension") {
+        if (const QString err = readCurve(root, p, rd); !err.isEmpty())
+            return fail(err);
+        return {p, {}};
+    }
+    p.fixture = "grips";
 
     tf::analysis::TensionMethod &m = p.method;
     m.proofOffsets.clear();
     m.yieldPoint = false;
-    Reader rd{&p.parameters, {}};
 
     for (const QJsonValue &c : root.value("conditioning").toArray()) {
         const QJsonObject step = c.toObject();
@@ -161,6 +398,7 @@ ProfileOrError loadProfile(const QString &pathOrId)
         pr.symbol = r.value("symbol").toString();
         pr.name = r.value("name").toString();
         pr.quantity = r.value("quantity").toString(pr.id);
+        pr.key = pr.quantity;
         pr.unit = r.value("unit").toString();
         const QJsonObject method = r.value("method").toObject();
         pr.primitive = method.value("primitive").toString();

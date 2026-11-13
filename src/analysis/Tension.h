@@ -8,6 +8,7 @@
 // changes; a profile always sets them, and says where each came from.
 
 #include "analysis/Primitives.h"
+#include "analysis/Result.h"
 
 #include <map>
 #include <optional>
@@ -63,27 +64,10 @@ struct TensionMethod {
     double fractureMinDrop = 0.10;     // fraction of the maximum force
 };
 
-// What a single result is and how it was found.
-struct Determination {
-    bool determined = false;
-    double value = 0;            // SI
-    std::string unit;            // SI unit symbol: "Pa", "N", "1"
-    std::string reason;          // when not determined
-    std::string primitive;       // the engine primitive that produced it
-    std::optional<LinearFit> fit;
-    std::optional<std::pair<double, double>> window;  // fit window, on windowAxis
-    std::string windowAxis;                           // "stress" (Pa) or "strain" (1)
-    std::optional<CurvePoint> point;                  // on the stress-strain curve
-};
-
-struct TensionResult {
-    // Keyed by result id: "E", "Rp0.2", "ReH", "ReL", "Fm", "Rm", "Agt", "Ag",
-    // "At", "A", "Rb" (stress at fracture). Strains are fractions (0.05 is
-    // 5 %).
-    std::map<std::string, Determination> results;
-    std::vector<std::string> flags;
-    double strainOrigin = 0;     // the zero point used, as strain
-};
+// The tension model's answer, keyed by result id: "E", "Rp0.2", "ReH",
+// "ReL", "Fm", "Rm", "Agt", "Ag", "At", "A", "Rb" (stress at fracture).
+// Strains are fractions (0.05 is 5 %).
+using TensionResult = AnalysisResult;
 
 // The proof-strength id for an offset: 0.002 -> "Rp0.2", 0.001 -> "Rp0.1".
 std::string proofId(double offset);

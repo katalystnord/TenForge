@@ -13,6 +13,24 @@ tests/fixtures/bam-s355/*.csv
     Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
     Unchanged. Used as validation data for the test suite.
 
+tests/fixtures/braunschweig-14125/*.CSV
+    From: Osten, A., Steinmetz, J., Charif, S., Voelkerink, O. (2025).
+    Moisture uptake, flexural properties, and mode I fracture toughness of
+    hemp fiber reinforced polymer laminates with embedded capacitive
+    sensor. Zenodo. https://doi.org/10.5281/zenodo.17611621
+    Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+    One export, unchanged. Used as test data for the importer and the
+    window. The test suite fetches the rest of the same archive at test
+    time; testXpert's results transcribed from its protocols are in
+    tests/validation/braunschweig-14125-agreed.json.
+
+tests/fixtures/puf-d1621/*
+    From: Pires da Silva, E. H. (2023). Aged PUF compression tests
+    (version 3). Mendeley Data. https://doi.org/10.17632/2sp8fyvhfm.3
+    Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+    Two files (one test and its batch's dimensions), unchanged. Used as
+    test data for the importer and the ISO 844 profile.
+
 Data used by the test suite but not included
 --------------------------------------------
 

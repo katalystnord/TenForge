@@ -1,0 +1,24 @@
+{
+  "answers": {
+    "Ef_Pa": 2800000000.0,
+    "Fm_N": 164.31774999999996,
+    "epsilon_at_1.5h_1": 0.03693603515625,
+    "epsilon_fB_1": 0.07,
+    "epsilon_fC_1": 0.035,
+    "epsilon_fM_1": 0.05,
+    "sigma_at_1.5h_Pa": 81714719.9749382,
+    "sigma_fB_Pa": 85000000.0,
+    "sigma_fC_Pa": 79101457.92122316,
+    "sigma_fM_Pa": 92000000.0
+  },
+  "columns": {
+    "deflection": "deflection_mm:mm",
+    "force": "force_N:N"
+  },
+  "file": "beam-3pt.csv",
+  "fixture": "three-point",
+  "note": "Three-point bend: linear Ef = 2.8 GPa to 0.6 %; maximum 92 MPa at 5 %; break at 7 % and 85 MPa; a sample exactly at 3.5 %.",
+  "span_mm": 64.0,
+  "thickness_mm": 4.1,
+  "width_mm": 10.2
+}

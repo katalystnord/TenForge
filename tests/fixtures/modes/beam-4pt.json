@@ -1,0 +1,20 @@
+{
+  "answers": {
+    "Ef_Pa": 25000000000.0,
+    "Fm_N": 578.3400000000001,
+    "epsilon_fM_1": 0.018,
+    "sigma_fM_Pa": 420000000.0
+  },
+  "columns": {
+    "deflection": "deflection_mm:mm",
+    "force": "force_N:N"
+  },
+  "deflection_at": "loading-points",
+  "file": "beam-4pt.csv",
+  "fixture": "four-point",
+  "loading_span_mm": 27.0,
+  "note": "Four-point bend, deflection at the loading points: linear Ef = 25 GPa to 1.2 %; maximum 420 MPa at 1.8 %; a slight fall; no break.",
+  "span_mm": 81.0,
+  "thickness_mm": 2.7,
+  "width_mm": 15.3
+}

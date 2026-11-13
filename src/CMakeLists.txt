@@ -3,6 +3,8 @@
 # settled decisions). It is the part every other target and every future
 # binding stands on, and it must be usable without a GUI toolkit.
 add_library(tf_analysis STATIC
+    analysis/Curve.cpp
+    analysis/Models.cpp
     analysis/Primitives.cpp
     analysis/Statistics.cpp
     analysis/Tension.cpp

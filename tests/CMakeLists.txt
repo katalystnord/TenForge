@@ -47,6 +47,28 @@
 #   NOT exercised: the chart's render-size assertion was not separately
 #   broken (no clean way to deny the widget a GL context in the test); it
 #   rests on VTK reporting zero size without one.
+#
+# NEGATIVE CHECKS, 2026-11-13, Phase 3:
+#   - compression_and_bending_models: red against stubs (abort on the
+#     first missing factor). One fixture defect then found: the foam's
+#     maximum was too flat to resolve at the file's 9 decimals (fixed in
+#     make_modes.py, which says why).
+#   - import_machine_exports, Phase 3 cases: red against the old importer
+#     (abort: no spaced preamble, no tiered displacement names).
+#   - profiles_and_results_documents, Phase 3 cases: written before the
+#     loader but not run red alone (the new fields did not compile yet), so
+#     broken instead: deflection_per_thickness dropped, red here and in
+#     the session's ISO 178 case; unknown validity quantities accepted, red.
+#   - analysis_session_guides_and_analyses: the compliance case was first
+#     red for a test-setup reason (table too stiff to move Ef by 1 %, and
+#     too short for the four-point beam); the code was right.
+#   - braunschweig_14125_agrees_with_testxpert: deflection read at
+#     mid-span, 138 of 161 red; modulus window to 0.30 %, 67 red; an
+#     exclusion whose reason no longer held, refused.
+#   - main_window_walkthrough, Phase 3: the "Deflection unit" label left
+#     as "Extension unit", red; the loading span not read, red. The
+#     panel-width check was red on first run (389 px needed, 378 shown,
+#     and 415 in bending): a real defect, fixed.
 
 # --- The engine stands alone ------------------------------------------------
 # Every public header of tf_analysis, included into one translation unit and
@@ -87,6 +109,12 @@ target_link_libraries(test_tension_synthetic PRIVATE tf_analysis)
 target_compile_definitions(test_tension_synthetic PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME tension_on_synthetic_curves COMMAND test_tension_synthetic)
+
+add_executable(test_curve test_curve.cpp)
+target_link_libraries(test_curve PRIVATE tf_analysis)
+target_compile_definitions(test_curve PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME compression_and_bending_models COMMAND test_curve)
 
 # --- Reading machine exports (tf_core) ---------------------------------------
 add_executable(test_import test_import.cpp)
@@ -155,6 +183,31 @@ else()
     message(STATUS "TF_VALIDATION_DOWNLOADS is OFF: the TENSTAND validation is not run")
 endif()
 
+# --- Validation: TU Braunschweig ISO 14125 (Phase 3 exit criterion) ---------
+# CC BY 4.0, so it could be committed, but the 25 exports are 7.3 MB: they
+# are fetched like TENSTAND (the archive pinned by SHA-256), and one file is
+# committed as the importer's fixture for testXpert's dialect. testXpert's
+# own results for each specimen are committed as transcribed facts.
+add_executable(validate_braunschweig_14125 validate_braunschweig_14125.cpp)
+target_link_libraries(validate_braunschweig_14125 PRIVATE tf_core)
+if(TF_VALIDATION_DOWNLOADS)
+    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/validation/braunschweig-14125-agreed.json tf_bs_json)
+    string(JSON tf_bs_url GET "${tf_bs_json}" data url)
+    string(JSON tf_bs_sha GET "${tf_bs_json}" data sha256)
+    add_test(NAME fetch_braunschweig_14125
+             COMMAND ${CMAKE_COMMAND} -DURL=${tf_bs_url} -DSHA256=${tf_bs_sha}
+                     -DDEST=${TF_VALIDATION_CACHE}/braunschweig-14125
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/validation/fetch.cmake)
+    set_tests_properties(fetch_braunschweig_14125 PROPERTIES FIXTURES_SETUP braunschweig)
+    add_test(NAME braunschweig_14125_agrees_with_testxpert
+             COMMAND validate_braunschweig_14125
+                     ${CMAKE_CURRENT_SOURCE_DIR}/validation/braunschweig-14125-agreed.json
+                     ${TF_VALIDATION_CACHE}/braunschweig-14125/data
+                     ${CMAKE_BINARY_DIR}/braunschweig-14125-report.md)
+    set_tests_properties(braunschweig_14125_agrees_with_testxpert PROPERTIES
+        FIXTURES_REQUIRED braunschweig)
+endif()
+
 # --- Validation: BAM S355 (committed, CC BY 4.0) -----------------------------
 add_executable(validate_bam_s355 validate_bam_s355.cpp)
 target_link_libraries(validate_bam_s355 PRIVATE tf_core)
@@ -209,7 +262,7 @@ set_tests_properties(cli_without_a_profile_exits_non_zero PROPERTIES WILL_FAIL T
 add_test(NAME cli_without_an_area_names_what_is_missing
          COMMAND tf-analyse --profile iso-527-1-2019 ${TF_SYN}/polymer.csv)
 set_tests_properties(cli_without_an_area_names_what_is_missing PROPERTIES
-    PASS_REGULAR_EXPRESSION "cross-section area S0 is not in the file")
+    PASS_REGULAR_EXPRESSION "give --area, or --width and --thickness")
 add_test(NAME cli_without_an_area_exits_non_zero
          COMMAND tf-analyse --profile iso-527-1-2019 ${TF_SYN}/polymer.csv)
 set_tests_properties(cli_without_an_area_exits_non_zero PROPERTIES WILL_FAIL TRUE)
@@ -245,4 +298,7 @@ endif()
 # above rather than reaching past it to a compositor.
 # A file dialog nobody answers would wait for ever: the timeout ends it.
 set_tests_properties(main_window_walkthrough PROPERTIES TIMEOUT 120
-    ENVIRONMENT "LIBGL_ALWAYS_SOFTWARE=1;QT_QPA_PLATFORM=xcb;WAYLAND_DISPLAY=")
+    ENVIRONMENT "LIBGL_ALWAYS_SOFTWARE=1;QT_QPA_PLATFORM=xcb;WAYLAND_DISPLAY=;TF_WALKTHROUGH_XVFB=1")
+# The test binary also puts itself under xvfb-run when started any other
+# way (ensureHeadless() in the test), so a direct run never reaches the
+# desktop either.

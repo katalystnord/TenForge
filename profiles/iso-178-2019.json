@@ -1,0 +1,330 @@
+{
+  "format": "tenforge-profile",
+  "version": "1.0",
+  "id": "iso-178-2019",
+  "profile_version": "0.1.0",
+  "title": "Plastics, determination of flexural properties",
+  "standard": {
+    "body": "ISO",
+    "number": "178",
+    "edition": "2019"
+  },
+  "mode": "flexure",
+  "inputs": {
+    "fixture": "three-point",
+    "geometry": [
+      "width",
+      "thickness",
+      "span"
+    ],
+    "strain_source": "deflection",
+    "measured": [
+      "force",
+      "deflection"
+    ]
+  },
+  "conditioning": [
+    {
+      "step": "zero-point",
+      "method": "as-recorded",
+      "note": "Strains are counted from the recorded zero, after any preload the machine applied."
+    }
+  ],
+  "results": [
+    {
+      "id": "Ef",
+      "symbol": "E_f",
+      "name": "Flexural modulus",
+      "quantity": "modulus",
+      "unit": "Pa",
+      "method": {
+        "primitive": "linear-fit",
+        "fit": "regression",
+        "window": {
+          "axis": "strain",
+          "from": {
+            "value": 0.0005,
+            "unit": "1",
+            "source": {
+              "document": "ISO 178:2019",
+              "clause": "3.11, 9.3"
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Lower strain of the modulus window. From the publisher's public preview of ISO 178:2019 (https://cdn.standards.iteh.ai/samples/70513/cd351551961842c590df25e23807b73c/ISO-178-2019.pdf); to be confirmed from the purchased text."
+          },
+          "to": {
+            "value": 0.0025,
+            "unit": "1",
+            "source": {
+              "document": "ISO 178:2019",
+              "clause": "3.11, 9.3"
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Upper strain of the modulus window. From the publisher's public preview of ISO 178:2019 (https://cdn.standards.iteh.ai/samples/70513/cd351551961842c590df25e23807b73c/ISO-178-2019.pdf); to be confirmed from the purchased text."
+          }
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "sigma_fM",
+      "symbol": "σ_fM",
+      "name": "Flexural strength",
+      "quantity": "max-stress",
+      "unit": "Pa",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "epsilon_fM",
+      "symbol": "ε_fM",
+      "name": "Flexural strain at flexural strength",
+      "quantity": "strain-at-max",
+      "unit": "1",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.01,
+          "unit": "%",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "sigma_fC",
+      "symbol": "σ_fC",
+      "name": "Flexural stress at conventional deflection",
+      "quantity": "stress-at-deflection",
+      "unit": "Pa",
+      "method": {
+        "primitive": "value-at",
+        "deflection_per_thickness": {
+          "value": 1.5,
+          "unit": "1",
+          "source": {
+            "document": "ISO 178:2019",
+            "clause": "3.5, 3.7"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Conventional deflection s_C as a multiple of the thickness (3.5 % strain when L = 16 h). From the publisher's public preview of ISO 178:2019 (https://cdn.standards.iteh.ai/samples/70513/cd351551961842c590df25e23807b73c/ISO-178-2019.pdf); to be confirmed from the purchased text."
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "sigma_fB",
+      "symbol": "σ_fB",
+      "name": "Flexural stress at break",
+      "quantity": "break-stress",
+      "unit": "Pa",
+      "method": {
+        "primitive": "break",
+        "ratio": {
+          "value": 5.0,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "A break is a fall in force at least this many times the fall before it. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        },
+        "min_drop": {
+          "value": 0.1,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "A break is a fall of at least this fraction of the maximum force. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "epsilon_fB",
+      "symbol": "ε_fB",
+      "name": "Flexural strain at break",
+      "quantity": "break-strain",
+      "unit": "1",
+      "method": {
+        "primitive": "break",
+        "ratio": {
+          "value": 5.0,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "A break is a fall in force at least this many times the fall before it. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        },
+        "min_drop": {
+          "value": 0.1,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "A break is a fall of at least this fraction of the maximum force. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        }
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.01,
+          "unit": "%",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "Fm",
+      "symbol": "F_m",
+      "name": "Maximum force",
+      "quantity": "max-force",
+      "unit": "N",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "N",
+        "rounding": {
+          "value": 0.1,
+          "unit": "N",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 178:2019 to be checked for a rule of its own."
+        }
+      }
+    }
+  ],
+  "validity": [
+    {
+      "id": "span-to-thickness",
+      "check": "ratio",
+      "numerator": "span",
+      "denominator": "thickness",
+      "min": {
+        "value": 15.0,
+        "unit": "1",
+        "source": {
+          "document": "ISO 178:2019",
+          "clause": "4, 8"
+        },
+        "confirmed": false,
+        "confirmed_from": "",
+        "confirmed_by": "",
+        "note": "Span L = (16 +/- 1) h. The 16 is in the public preview (https://cdn.standards.iteh.ai/samples/70513/cd351551961842c590df25e23807b73c/ISO-178-2019.pdf); the tolerance of 1 comes from one secondary source only. To be confirmed from the purchased text."
+      },
+      "max": {
+        "value": 17.0,
+        "unit": "1",
+        "source": {
+          "document": "ISO 178:2019",
+          "clause": "4, 8"
+        },
+        "confirmed": false,
+        "confirmed_from": "",
+        "confirmed_by": "",
+        "note": "Upper limit of L/h, as for the lower."
+      }
+    }
+  ]
+}

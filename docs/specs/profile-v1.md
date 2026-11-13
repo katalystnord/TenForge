@@ -148,3 +148,46 @@ and record metadata.
 2. **User-defined profiles are allowed from 0.1**, clearly marked as not
    shipped with TenForge, and labelled aligned unless every parameter is
    confirmed.
+
+## 7. Additions in release 0.2 (Phase 3; additive, for David's review)
+
+**Modes.** `mode` is `tension`, `compression` or `flexure`. A compression
+or flexure profile names its fixture in `inputs.fixture`: `platens` for
+compression, `three-point` or `four-point` for flexure.
+
+**The curve quantities.** Compression and flexure results name a
+`quantity` from this list, each made by the primitive given (a different
+primitive is refused, as in tension). Unlike tension, the result's own
+`id` is its key, so a profile may ask for the same quantity twice under
+two ids.
+
+| `quantity` | `primitive` | Parameters in `method` |
+|---|---|---|
+| `modulus` (one per profile) | `linear-fit` | `window` on `axis: "strain"`, `from`, `to` |
+| | `max-slope` | `width`: the strain span of the steepest straight stretch sought |
+| `max-stress`, `strain-at-max`, `max-force` | `maximum` | none |
+| `yield-stress`, `yield-strain` | `zero-slope` | `min_drop`, `min_span`: the first maximum the stress then falls this fraction below and stays below over this strain |
+| `stress-at-strain` | `value-at` | `strain` |
+| `stress-at-deflection` (flexure) | `value-at` | `deflection_per_thickness`: the deflection as a multiple of the specimen's thickness (ISO 178's 1.5 h); the strain it means is worked out per specimen |
+| `break-stress`, `break-strain` | `break` | `ratio`, `min_drop` (as tension's fracture rule) |
+| `peak-stress`, `strain-at-peak` | `max-within-window` | `strain`, `min_drop`: a maximum before this strain, counted only if the stress at the strain is this fraction lower |
+
+Results sharing a rule (yield, break, the peak's window) must give the
+same numbers; a test has one of each.
+
+**Conditioning.** `zero-point` with `elastic-line` counts every strain from
+where the modulus line meets zero stress (toe compensation), and then
+requires a `modulus` result.
+
+**Validity.** One check is implemented, `ratio`:
+
+```json
+{ "id": "span-to-thickness", "check": "ratio",
+  "numerator": "span", "denominator": "thickness",
+  "min": { "value": 15, "...": "parameter fields" },
+  "max": { "value": 17, "...": "parameter fields" } }
+```
+
+The quantities a ratio may use: `width`, `thickness`, `span`,
+`loading_span`, `length` (the length strain is measured over). Its
+outcome goes into results.json (results-v1, section 6).

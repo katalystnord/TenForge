@@ -1,0 +1,262 @@
+{
+  "format": "tenforge-profile",
+  "version": "1.0",
+  "id": "iso-604-2002",
+  "profile_version": "0.1.0",
+  "title": "Plastics, determination of compressive properties",
+  "standard": {
+    "body": "ISO",
+    "number": "604",
+    "edition": "2002"
+  },
+  "mode": "compression",
+  "inputs": {
+    "fixture": "platens",
+    "geometry": [
+      "area",
+      "length"
+    ],
+    "strain_source": "extensometer",
+    "measured": [
+      "force",
+      "deformation"
+    ],
+    "note": "The modulus is defined on extensometer strain over a gauge length; nominal strain from the platens' travel is for the other results (3.4, 3.5, 5.1.5)."
+  },
+  "conditioning": [
+    {
+      "step": "zero-point",
+      "method": "as-recorded",
+      "note": "Strains are counted from the recorded zero."
+    }
+  ],
+  "results": [
+    {
+      "id": "Ec",
+      "symbol": "E_c",
+      "name": "Compressive modulus",
+      "quantity": "modulus",
+      "unit": "Pa",
+      "method": {
+        "primitive": "linear-fit",
+        "fit": "regression",
+        "window": {
+          "axis": "strain",
+          "from": {
+            "value": 0.0005,
+            "unit": "1",
+            "source": {
+              "document": "ISO 604:2002",
+              "clause": "3.6"
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Lower strain of the modulus window. From the publisher's public preview of ISO 604:2002 (https://cdn.standards.iteh.ai/samples/31261/7596c06eb39540f3ae2f1abcdae4fb79/ISO-604-2002.pdf); to be confirmed from the purchased text."
+          },
+          "to": {
+            "value": 0.0025,
+            "unit": "1",
+            "source": {
+              "document": "ISO 604:2002",
+              "clause": "3.6"
+            },
+            "confirmed": false,
+            "confirmed_from": "",
+            "confirmed_by": "",
+            "note": "Upper strain of the modulus window. From the publisher's public preview of ISO 604:2002 (https://cdn.standards.iteh.ai/samples/31261/7596c06eb39540f3ae2f1abcdae4fb79/ISO-604-2002.pdf); to be confirmed from the purchased text."
+          }
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "sigma_y",
+      "symbol": "σ_y",
+      "name": "Compressive yield stress",
+      "quantity": "yield-stress",
+      "unit": "Pa",
+      "method": {
+        "primitive": "zero-slope",
+        "min_drop": {
+          "value": 0.005,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "A yield is a maximum the stress then falls at least this fraction below. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        },
+        "min_span": {
+          "value": 0.005,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "and stays below over at least this much strain. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        }
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "epsilon_y",
+      "symbol": "ε_y",
+      "name": "Compressive yield strain",
+      "quantity": "yield-strain",
+      "unit": "1",
+      "method": {
+        "primitive": "zero-slope",
+        "min_drop": {
+          "value": 0.005,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "A yield is a maximum the stress then falls at least this fraction below. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        },
+        "min_span": {
+          "value": 0.005,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "and stays below over at least this much strain. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        }
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.01,
+          "unit": "%",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "sigma_M",
+      "symbol": "σ_M",
+      "name": "Compressive strength",
+      "quantity": "max-stress",
+      "unit": "Pa",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "MPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "MPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "epsilon_M",
+      "symbol": "ε_M",
+      "name": "Compressive strain at compressive strength",
+      "quantity": "strain-at-max",
+      "unit": "1",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.01,
+          "unit": "%",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "Fm",
+      "symbol": "F_m",
+      "name": "Maximum force",
+      "quantity": "max-force",
+      "unit": "N",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "N",
+        "rounding": {
+          "value": 1,
+          "unit": "N",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 604:2002 to be checked for a rule of its own."
+        }
+      }
+    }
+  ],
+  "validity": []
+}

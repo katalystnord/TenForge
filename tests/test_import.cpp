@@ -132,4 +132,69 @@ TF_CASE(quantities_parse_with_their_units)
     TF_CHECK(!parseQuantity("50 kN", "length"));    // and must fit the dimension
 }
 
+// --- Real exports from compression and bending machines (Phase 3) ------------
+// A ZwickRoell testXpert III export (TU Braunschweig, four-point bending,
+// CC BY 4.0): Latin-1, a preamble of "key   value unit" lines with no
+// delimiter, no units row, decimal commas in e-notation, and two candidate
+// displacement columns, a named deformation and the crosshead.
+static const char *kZwick =
+    "braunschweig-14125/4PB_DIN14125_NFK_Osten_19122024_Hemp80_Cdry_reference_class3_1.CSV";
+
+TF_CASE(zwick_export_reads_its_whitespace_preamble_and_columns)
+{
+    const auto r = readTable(fixture(kZwick));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.delimiter == ';');
+    TF_CHECK(t.decimal == ',');
+    TF_CHECK(t.names == QStringList({"Verformung", "Standardkraft", "Zeit", "Traversenweg",
+                                     QString::fromUtf8("Prüfzeit")}));
+    TF_REQUIRE(t.columns.size() == 5);
+    TF_CHECK(t.columns[1].size() == 1549);
+    TF_NEAR(t.columns[1][0], 0.1256414204836, 1e-15);
+    TF_NEAR(*preambleQuantity(t, {"Probenbreite"}, "length"), 14.85e-3, 1e-15);
+    TF_NEAR(*preambleQuantity(t, {"Probendicke"}, "length"), 2.52e-3, 1e-15);
+    TF_NEAR(*preambleQuantity(t, {QString::fromUtf8("Stützweite")}, "length"), 45e-3, 1e-15);
+}
+
+TF_CASE(a_named_deformation_is_preferred_over_the_crosshead)
+{
+    const auto r = readTable(fixture(kZwick));
+    TF_REQUIRE(r.table.has_value());
+    TF_CHECK(guessForceColumn(*r.table) == "Standardkraft");
+    TF_CHECK(guessExtensionColumn(*r.table) == "Verformung");
+}
+
+TF_CASE(french_compression_export_reads_quoted_names_and_units)
+{
+    // Universidade de Sao Paulo, PU foam to ASTM D1621 (CC BY 4.0).
+    const auto r = readTable(fixture("puf-d1621/1BAT-DIR1-1.TRA"));
+    TF_REQUIRE(r.table.has_value());
+    const Table &t = *r.table;
+    TF_CHECK(t.units == QStringList({"s", "mm", "N"}));
+    TF_CHECK(guessForceColumn(t) == "Force standard");
+    TF_CHECK(guessExtensionColumn(t) == QString::fromUtf8("Déformation nominale"));
+    TF_CHECK(t.columns[0].size() == 3991);
+}
+
+TF_CASE(deflection_and_crosshead_columns_are_recognised)
+{
+    for (const char *name : {"deflection", "Durchbiegung", "compression", "Stauchung"}) {
+        Table t;
+        t.names = {"time", name, "force"};
+        if (guessExtensionColumn(t) != name)
+            tf::test::fail(__FILE__, __LINE__, std::string("not found: ") + name);
+    }
+    // A crosshead counts only when nothing better is there.
+    Table t;
+    t.names = {"time", "crosshead", "force"};
+    TF_CHECK(guessExtensionColumn(t) == "crosshead");
+    t.names = {"time", "crosshead", "deflection", "force"};
+    TF_CHECK(guessExtensionColumn(t) == "deflection");
+    t.names = {"time", "deflection", "Durchbiegung", "force"};
+    QString why;
+    TF_CHECK(guessExtensionColumn(t, &why).isEmpty());
+    TF_CHECK(why.contains("2"));
+}
+
 int main() { return tf::test::run(); }

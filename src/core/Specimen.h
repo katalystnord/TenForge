@@ -31,7 +31,23 @@ struct AreaOrReason {
 
 AreaOrReason crossSection(const Specimen &s);
 
+// How the specimen was held or loaded, as far as the stress and strain
+// models need it (test-record-v1, 5.3). Lengths in metres; empty when not
+// entered. The kind ("grips", "platens", "three-point", "four-point")
+// comes from the procedure.
+struct Fixture {
+    enum class DeflectionAt { LoadingPoints, Midspan };
+    std::optional<double> span;          // between the supports
+    std::optional<double> loadingSpan;   // between the loading points (four-point)
+    std::optional<DeflectionAt> deflectionAt;
+};
+
+QJsonObject fixtureJson(const QString &kind, const Fixture &f);
+Fixture fixtureFromJson(const QJsonObject &o);
+
 // The shape's name in test.json: "rectangular", "round", "tube", "given-area".
+// Reading also accepts "beam", the spec's name for a rectangular bend
+// specimen.
 QString shapeName(Specimen::Shape shape);
 
 QJsonObject specimenJson(const Specimen &s);

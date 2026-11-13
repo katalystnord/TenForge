@@ -116,7 +116,7 @@ std::optional<Specimen> specimenFromJson(const QJsonObject &o, QString *error)
     s.notes = o.value("notes").toString();
     const QJsonObject g = o.value("geometry").toObject();
     const QString shape = g.value("shape").toString();
-    bool known = false;
+    bool known = shape == "beam";  // a rectangular bend specimen (test-record-v1, 5.2)
     for (auto sh : {Specimen::Shape::Rectangular, Specimen::Shape::Round, Specimen::Shape::Tube,
                     Specimen::Shape::GivenArea})
         if (shapeName(sh) == shape) {
@@ -132,6 +132,34 @@ std::optional<Specimen> specimenFromJson(const QJsonObject &o, QString *error)
         s.*(d.field) = fromQuantity(g.value(d.key));
     s.gaugeLength = fromQuantity(o.value("gauge_length"));
     return s;
+}
+
+QJsonObject fixtureJson(const QString &kind, const Fixture &f)
+{
+    QJsonObject o{{"kind", kind}};
+    if (kind == "three-point" || kind == "four-point")
+        o["support_span"] = quantity(f.span, "m");
+    if (kind == "four-point") {
+        o["loading_span"] = quantity(f.loadingSpan, "m");
+        o["deflection_at"] = !f.deflectionAt ? QJsonValue()
+                             : *f.deflectionAt == Fixture::DeflectionAt::Midspan
+                                 ? QJsonValue("mid-span")
+                                 : QJsonValue("loading-points");
+    }
+    return o;
+}
+
+Fixture fixtureFromJson(const QJsonObject &o)
+{
+    Fixture f;
+    f.span = fromQuantity(o.value("support_span"));
+    f.loadingSpan = fromQuantity(o.value("loading_span"));
+    const QString at = o.value("deflection_at").toString();
+    if (at == "mid-span")
+        f.deflectionAt = Fixture::DeflectionAt::Midspan;
+    else if (at == "loading-points")
+        f.deflectionAt = Fixture::DeflectionAt::LoadingPoints;
+    return f;
 }
 
 } // namespace tf::core

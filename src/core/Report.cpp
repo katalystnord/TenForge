@@ -29,13 +29,15 @@ QString row(const QString &k, const QString &v)
 QString shortDetail(const QJsonObject &reason)
 {
     const QString d = reason.value("detail").toString();
-    const int colon = d.indexOf(": results.");
-    return colon > 0 ? d.left(colon) + " (each listed in results.json)." : d;
+    const QString marker = "standard's text: ";
+    const int at = d.indexOf(marker);
+    return at > 0 ? d.left(at + int(marker.size()) - 2) + " (each listed in results.json)." : d;
 }
 
 } // namespace
 
-QString reportHtml(const QJsonObject &doc, const Specimen &sp, const QString &chartSrc)
+QString reportHtml(const QJsonObject &doc, const Specimen &sp, const QString &chartSrc,
+                   const Fixture &fx)
 {
     const QJsonObject profile = doc.value("profile").toObject();
     const QJsonObject source = doc.value("source").toObject();
@@ -49,16 +51,21 @@ QString reportHtml(const QJsonObject &doc, const Specimen &sp, const QString &ch
     if (title.isEmpty())
         title = profile.value("id").toString();
     const bool toStandard = conf.value("status").toString() == "to-standard";
+    const QString mode = profile.value("mode").toString();
+    const QString kind = profile.value("fixture").toString();
+    const QString test = mode == "flexure"       ? QStringLiteral("Flexural test")
+                         : mode == "compression" ? QStringLiteral("Compression test")
+                                                 : QStringLiteral("Tensile test");
 
     QString h;
     h += "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">\n";
-    h += "<title>Tensile test " + esc(sp.id) + "</title>\n";
+    h += "<title>" + test + " " + esc(sp.id) + "</title>\n";
     h += "<style>body{font-family:sans-serif;font-size:10pt}"
          "table{border-collapse:collapse;margin-bottom:12px}"
          "th,td{border:1px solid #999;padding:3px 6px;vertical-align:top}"
          ".conf{border:2px solid #b36b00;padding:6px;margin:8px 0}</style>\n";
     h += "</head><body>\n";
-    h += "<h1>Tensile test report</h1>\n";
+    h += "<h1>" + test + " report</h1>\n";
     h += "<p>Specimen <b>" + esc(sp.id.isEmpty() ? QStringLiteral("(no id)") : sp.id) + "</b>, "
          + esc(title) + "</p>\n";
 
@@ -93,8 +100,22 @@ QString reportHtml(const QJsonObject &doc, const Specimen &sp, const QString &ch
     case Specimen::Shape::GivenArea:
         break;
     }
-    h += row("Cross-section S0", mm(crossSection(sp).area, 1e6, "mm2"));
-    h += row("Gauge length Le", mm(sp.gaugeLength, 1e3, "mm"));
+    if (mode == "flexure") {
+        h += row("Loading", kind);
+        h += row("Support span L", mm(fx.span, 1e3, "mm"));
+        if (kind == "four-point") {
+            h += row("Loading span", mm(fx.loadingSpan, 1e3, "mm"));
+            h += row("Deflection measured at",
+                     !fx.deflectionAt ? QStringLiteral("not stated (the column was a strain)")
+                     : *fx.deflectionAt == Fixture::DeflectionAt::Midspan
+                         ? QStringLiteral("mid-span")
+                         : QStringLiteral("the loading points"));
+        }
+    } else {
+        h += row("Cross-section S0", mm(crossSection(sp).area, 1e6, "mm2"));
+        h += row(mode == "compression" ? "Height or gauge length L0" : "Gauge length Le",
+                 mm(sp.gaugeLength, 1e3, "mm"));
+    }
     if (!sp.notes.isEmpty())
         h += row("Notes", sp.notes);
     h += "</table>\n";
@@ -131,12 +152,25 @@ QString reportHtml(const QJsonObject &doc, const Specimen &sp, const QString &ch
         h += "</ul>\n";
     }
 
+    const QJsonArray validity = doc.value("validity").toArray();
+    if (!validity.isEmpty()) {
+        h += "<h2>Specimen and fixture checks</h2>\n<table>\n";
+        for (const QJsonValue &v : validity) {
+            const QJsonObject c = v.toObject();
+            h += row(c.value("status").toString(), c.value("detail").toString());
+        }
+        h += "</table>\n";
+    }
+
     h += "<h2>Provenance</h2>\n<table>\n";
     h += row("Data file", QFileInfo(source.value("path").toString()).fileName());
     h += row("Data file SHA-256", source.value("sha256").toString());
     const QJsonObject cols = source.value("columns").toObject();
     h += row("Force column", cols.value("force").toString());
-    h += row("Extension column", cols.value("extension").toString());
+    h += row(mode == "flexure"       ? "Deflection column"
+             : mode == "compression" ? "Deformation column"
+                                     : "Extension column",
+             cols.value("extension").toString());
     QStringList notes;
     for (const QJsonValue &n : source.value("notes").toArray())
         notes << n.toString();

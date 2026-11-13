@@ -58,6 +58,10 @@ struct TensionMapping {
     QString extensionUnit;
     std::optional<double> area;         // m^2; empty: from the preamble (So)
     std::optional<double> gaugeLength;  // m; empty: from the preamble (Le)
+    // False for the curve modes, whose geometry is not an area and a gauge
+    // length: the columns and units are mapped and the geometry left at 0
+    // (the gauge length at 1 for a strain column).
+    bool needsGeometry = true;
 };
 
 struct TensionImport {

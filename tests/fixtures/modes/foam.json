@@ -1,0 +1,19 @@
+{
+  "answers": {
+    "E_Pa": 11500000.0,
+    "epsilon_m_1": 0.04,
+    "sigma_10_Pa": 283076.9230769231,
+    "sigma_m_Pa": 290000.0,
+    "zero_point_1": 0.004
+  },
+  "columns": {
+    "deformation": "deformation_mm:mm",
+    "force": "force_N:N"
+  },
+  "file": "foam.csv",
+  "fixture": "platens",
+  "height_mm": 49.8,
+  "note": "Rigid foam: quadratic toe; straight part E = 11.5 MPa meeting zero stress at 0.4 % recorded strain; maximum 0.29 MPa at 4 % from that zero; 10 % falls on a straight stretch; no break.",
+  "thickness_mm": 49.6,
+  "width_mm": 50.3
+}

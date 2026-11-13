@@ -1,0 +1,233 @@
+{
+  "format": "tenforge-profile",
+  "version": "1.0",
+  "id": "iso-844-2021",
+  "profile_version": "0.1.0",
+  "title": "Rigid cellular plastics, determination of compression properties",
+  "standard": {
+    "body": "ISO",
+    "number": "844",
+    "edition": "2021"
+  },
+  "mode": "compression",
+  "inputs": {
+    "fixture": "platens",
+    "geometry": [
+      "area",
+      "length"
+    ],
+    "strain_source": "platens",
+    "measured": [
+      "force",
+      "deformation"
+    ],
+    "note": "Procedure A: relative deformation is the platens' travel over the initial thickness h0."
+  },
+  "conditioning": [
+    {
+      "step": "zero-point",
+      "method": "elastic-line",
+      "note": "Deformation is counted from where the steepest straight part meets zero force (9.2.2). The standard's fallback for a curve without one (the deformation at 250 Pa) is not implemented: such a curve is flagged."
+    }
+  ],
+  "results": [
+    {
+      "id": "E",
+      "symbol": "E",
+      "name": "Compressive modulus",
+      "quantity": "modulus",
+      "unit": "Pa",
+      "method": {
+        "primitive": "max-slope",
+        "width": {
+          "value": 0.01,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "The steepest straight part is sought over stretches of this much strain (the standard asks for the most linear, steepest part). TenForge's choice; ISO 844:2021 to be checked for a rule of its own."
+        }
+      },
+      "report": {
+        "unit": "kPa",
+        "rounding": {
+          "value": 10,
+          "unit": "kPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 844:2021 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "sigma_m",
+      "symbol": "σ_m",
+      "name": "Compressive strength",
+      "quantity": "peak-stress",
+      "unit": "Pa",
+      "method": {
+        "primitive": "max-within-window",
+        "strain": {
+          "value": 0.1,
+          "unit": "1",
+          "source": {
+            "document": "ISO 844:2021",
+            "clause": "3.3, 9.2.1"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "The compressive strength is a maximum reached before 10 % relative deformation. From the publisher's public preview of ISO 844:2021 (https://cdn.standards.iteh.ai/samples/73560/24ff667df32b4981b29aa870b385bba2/ISO-844-2021.pdf); to be confirmed from the purchased text."
+        },
+        "min_drop": {
+          "value": 0.005,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "A maximum counts if the stress at 10 % is at least this fraction below it. TenForge's choice; ISO 844:2021 to be checked for a rule of its own."
+        }
+      },
+      "report": {
+        "unit": "kPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "kPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 844:2021 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "epsilon_m",
+      "symbol": "ε_m",
+      "name": "Relative deformation at compressive strength",
+      "quantity": "strain-at-peak",
+      "unit": "1",
+      "method": {
+        "primitive": "max-within-window",
+        "strain": {
+          "value": 0.1,
+          "unit": "1",
+          "source": {
+            "document": "ISO 844:2021",
+            "clause": "3.3, 9.2.1"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "The compressive strength is a maximum reached before 10 % relative deformation. From the publisher's public preview of ISO 844:2021 (https://cdn.standards.iteh.ai/samples/73560/24ff667df32b4981b29aa870b385bba2/ISO-844-2021.pdf); to be confirmed from the purchased text."
+        },
+        "min_drop": {
+          "value": 0.005,
+          "unit": "1",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "A maximum counts if the stress at 10 % is at least this fraction below it. TenForge's choice; ISO 844:2021 to be checked for a rule of its own."
+        }
+      },
+      "report": {
+        "unit": "%",
+        "rounding": {
+          "value": 0.01,
+          "unit": "%",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 844:2021 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "sigma_10",
+      "symbol": "σ_10",
+      "name": "Compressive stress at 10 % relative deformation",
+      "quantity": "stress-at-strain",
+      "unit": "Pa",
+      "method": {
+        "primitive": "value-at",
+        "strain": {
+          "value": 0.1,
+          "unit": "1",
+          "source": {
+            "document": "ISO 844:2021",
+            "clause": "3.4, 9.3"
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Relative deformation at which sigma_10 is taken. From the publisher's public preview of ISO 844:2021 (https://cdn.standards.iteh.ai/samples/73560/24ff667df32b4981b29aa870b385bba2/ISO-844-2021.pdf); to be confirmed from the purchased text."
+        }
+      },
+      "report": {
+        "unit": "kPa",
+        "rounding": {
+          "value": 0.1,
+          "unit": "kPa",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 844:2021 to be checked for a rule of its own."
+        }
+      }
+    },
+    {
+      "id": "Fm",
+      "symbol": "F_m",
+      "name": "Maximum force",
+      "quantity": "max-force",
+      "unit": "N",
+      "method": {
+        "primitive": "maximum"
+      },
+      "report": {
+        "unit": "N",
+        "rounding": {
+          "value": 1,
+          "unit": "N",
+          "source": {
+            "document": "TenForge",
+            "clause": ""
+          },
+          "confirmed": false,
+          "confirmed_from": "",
+          "confirmed_by": "",
+          "note": "Reporting step. TenForge's choice; ISO 844:2021 to be checked for a rule of its own."
+        }
+      }
+    }
+  ],
+  "validity": []
+}

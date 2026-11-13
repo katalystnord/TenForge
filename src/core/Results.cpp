@@ -55,8 +55,9 @@ QString reportedText(double siValue, const ProfileResult &r)
     return QString::number(rounded, 'f', decimalsOf(r.rounding));
 }
 
-QJsonObject resultsJson(const Profile &profile, const tf::analysis::TensionResult &result,
-                        const SourceInfo &source, const QDateTime &computedUtc)
+QJsonObject resultsJson(const Profile &profile, const tf::analysis::AnalysisResult &result,
+                        const SourceInfo &source, const QDateTime &computedUtc,
+                        const QJsonArray &validity)
 {
     QJsonObject root;
     root["format"] = "tenforge-results";
@@ -76,6 +77,8 @@ QJsonObject resultsJson(const Profile &profile, const tf::analysis::TensionResul
     root["profile"] = QJsonObject{{"id", profile.id},
                                   {"title", profile.title},
                                   {"standard", profile.designation},
+                                  {"mode", profile.mode},
+                                  {"fixture", profile.fixture},
                                   {"profile_version", profile.profileVersion},
                                   {"sha256", QString::fromLatin1(profile.sha256)},
                                   {"shipped", profile.shipped}};
@@ -95,8 +98,21 @@ QJsonObject resultsJson(const Profile &profile, const tf::analysis::TensionResul
                            .arg(unconfirmed.join(", "))}});
     reasons.append(QJsonObject{{"code", "no-force-calibration"},
                                {"detail", "No force calibration certificate (ISO 7500-1) is recorded with this analysis."}});
+    // ISO 9513 calibrates extensometers; a crosshead or deflectometer has
+    // no such standard named here.
+    const QString strainDevice = profile.mode == "flexure"       ? "deflection measurement"
+                                 : profile.mode == "compression" ? "deformation measurement"
+                                                                 : "extensometer (ISO 9513)";
     reasons.append(QJsonObject{{"code", "no-strain-calibration"},
-                               {"detail", "No extensometer calibration certificate (ISO 9513) is recorded with this analysis."}});
+                               {"detail", "No calibration certificate for the " + strainDevice
+                                              + " is recorded with this analysis."}});
+    for (const QJsonValue &v : validity) {
+        const QJsonObject c = v.toObject();
+        const QString st = c.value("status").toString();
+        if (st == "not-met" || st == "not-checked")
+            reasons.append(QJsonObject{{"code", "validity-" + st},
+                                       {"detail", c.value("detail").toString()}});
+    }
     if (!profile.shipped)
         reasons.append(QJsonObject{{"code", "user-profile"},
                                    {"detail", "The profile is not one shipped with TenForge: " + profile.path}});
@@ -110,7 +126,7 @@ QJsonObject resultsJson(const Profile &profile, const tf::analysis::TensionResul
         o["symbol"] = pr.symbol;
         o["name"] = pr.name;
         o["unit"] = pr.unit;
-        const auto it = result.results.find(pr.quantity.toStdString());
+        const auto it = result.results.find(pr.key.toStdString());
         const bool have = it != result.results.end();
         const tf::analysis::Determination *d = have ? &it->second : nullptr;
         if (d && d->determined) {
@@ -123,7 +139,7 @@ QJsonObject resultsJson(const Profile &profile, const tf::analysis::TensionResul
             o["value"] = QJsonValue();
             o["reported"] = QJsonValue();
             o["reason"] = d ? QString::fromStdString(d->reason)
-                            : QString("the engine produced no " + pr.quantity);
+                            : QString("the engine produced no " + pr.key);
         }
 
         QJsonObject how{{"primitive", pr.primitive}, {"quantity", pr.quantity}};
@@ -155,6 +171,7 @@ QJsonObject resultsJson(const Profile &profile, const tf::analysis::TensionResul
         results.append(o);
     }
     root["results"] = results;
+    root["validity"] = validity;
 
     QJsonArray flags;
     for (const auto &f : result.flags)

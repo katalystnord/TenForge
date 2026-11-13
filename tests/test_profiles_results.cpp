@@ -5,9 +5,14 @@
 #include "core/Results.h"
 #include "check.h"
 
+#include <QFile>
 #include <QJsonArray>
+#include <QJsonDocument>
+#include <QTemporaryDir>
 
 #include <cmath>
+#include <functional>
+#include <tuple>
 
 using namespace tf::core;
 
@@ -174,6 +179,139 @@ TF_CASE(a_user_profile_is_labelled_as_not_shipped)
         user = user || v.toObject().value("code").toString() == "user-profile";
     TF_CHECK(user);
     TF_NEAR(resultById(doc, "Et").value("value").toDouble(), 2.5e9, 1e3);
+}
+
+// --- Compression and bending (Phase 3) -----------------------------------------
+
+namespace {
+
+// A profile file made from a shipped one with one change, to show what the
+// loader refuses.
+QString variant(const QTemporaryDir &dir, const QString &shipped,
+                const std::function<void(QJsonObject &)> &change)
+{
+    QFile in(":/profiles/" + shipped + ".json");
+    if (!in.open(QIODevice::ReadOnly))
+        return {};
+    QJsonObject root = QJsonDocument::fromJson(in.readAll()).object();
+    change(root);
+    const QString path = dir.filePath("variant.json");
+    QFile out(path);
+    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return {};
+    out.write(QJsonDocument(root).toJson());
+    return path;
+}
+
+const tf::analysis::CurveRequest *request(const Profile &p, const std::string &id)
+{
+    for (const auto &q : p.curve.requests)
+        if (q.id == id)
+            return &q;
+    return nullptr;
+}
+
+} // namespace
+
+TF_CASE(compression_and_bending_profiles_are_shipped_with_their_modes)
+{
+    const std::vector<std::tuple<QString, QString, QString>> want{
+        {"iso-178-2019", "flexure", "three-point"},
+        {"iso-14125-1998-three-point", "flexure", "three-point"},
+        {"iso-14125-1998-four-point", "flexure", "four-point"},
+        {"iso-604-2002", "compression", "platens"},
+        {"iso-844-2021", "compression", "platens"}};
+    for (const auto &[id, mode, fixture] : want) {
+        const auto p = loadProfile(id);
+        if (!p.profile) {
+            tf::test::fail(__FILE__, __LINE__, (id + ": " + p.error).toStdString());
+            continue;
+        }
+        TF_CHECK(p.profile->mode == mode);
+        TF_CHECK(p.profile->fixture == fixture);
+        TF_CHECK(!p.profile->designation.isEmpty());
+    }
+}
+
+TF_CASE(flexure_profile_fills_the_curve_method)
+{
+    const auto p = loadProfile("iso-178-2019");
+    TF_REQUIRE(p.profile.has_value());
+    const auto &c = p.profile->curve;
+    TF_CHECK(c.zero == tf::analysis::CurveMethod::Zero::AsRecorded);
+    TF_CHECK(c.modulus == tf::analysis::CurveMethod::Modulus::StrainWindow);
+    TF_NEAR(c.modulusFrom, 0.0005, 1e-15);
+    TF_NEAR(c.modulusTo, 0.0025, 1e-15);
+    TF_REQUIRE(request(*p.profile, "Ef") != nullptr);
+    TF_CHECK(request(*p.profile, "Ef")->quantity == tf::analysis::CurveQuantity::Modulus);
+    TF_REQUIRE(request(*p.profile, "sigma_fC") != nullptr);
+    TF_CHECK(request(*p.profile, "sigma_fC")->quantity == tf::analysis::CurveQuantity::StressAtStrain);
+    bool fc = false;
+    for (const auto &r : p.profile->results)
+        if (r.id == "sigma_fC") {
+            fc = true;
+            TF_NEAR(r.deflectionPerThickness, 1.5, 1e-15);
+            TF_CHECK(r.key == "sigma_fC");
+        }
+    TF_CHECK(fc);
+    TF_REQUIRE(p.profile->validity.size() == 1);
+    TF_CHECK(p.profile->validity[0].numerator == "span");
+    TF_NEAR(p.profile->validity[0].min, 15.0, 1e-15);
+    TF_NEAR(p.profile->validity[0].max, 17.0, 1e-15);
+}
+
+TF_CASE(foam_profile_counts_from_the_steepest_line)
+{
+    const auto p = loadProfile("iso-844-2021");
+    TF_REQUIRE(p.profile.has_value());
+    const auto &c = p.profile->curve;
+    TF_CHECK(c.zero == tf::analysis::CurveMethod::Zero::ElasticLine);
+    TF_CHECK(c.modulus == tf::analysis::CurveMethod::Modulus::MaxSlope);
+    TF_NEAR(c.maxSlopeWidth, 0.01, 1e-15);
+    TF_REQUIRE(request(*p.profile, "sigma_m") != nullptr);
+    TF_NEAR(request(*p.profile, "sigma_m")->at, 0.10, 1e-15);
+    TF_NEAR(request(*p.profile, "sigma_10")->at, 0.10, 1e-15);
+}
+
+TF_CASE(a_curve_profile_that_cannot_run_is_refused_and_says_why)
+{
+    QTemporaryDir dir;
+    // A tension quantity in a flexure profile.
+    auto a = loadProfile(variant(dir, "iso-178-2019", [](QJsonObject &r) {
+        QJsonArray rs = r["results"].toArray();
+        QJsonObject x = rs[0].toObject();
+        x["quantity"] = "Rm";
+        rs[0] = x;
+        r["results"] = rs;
+    }));
+    TF_CHECK(!a.profile);
+    TF_CHECK(a.error.contains("Rm"));
+    // Counting strain from the elastic line needs a modulus.
+    auto b = loadProfile(variant(dir, "iso-844-2021", [](QJsonObject &r) {
+        QJsonArray rs = r["results"].toArray();
+        rs.removeAt(0);
+        r["results"] = rs;
+    }));
+    TF_CHECK(!b.profile);
+    TF_CHECK(b.error.contains("modulus"));
+    // A bending profile must say how the beam is loaded.
+    auto c = loadProfile(variant(dir, "iso-178-2019", [](QJsonObject &r) {
+        QJsonObject in = r["inputs"].toObject();
+        in["fixture"] = "five-point";
+        r["inputs"] = in;
+    }));
+    TF_CHECK(!c.profile);
+    TF_CHECK(c.error.contains("five-point"));
+    // A validity check on a quantity TenForge does not know.
+    auto d = loadProfile(variant(dir, "iso-178-2019", [](QJsonObject &r) {
+        QJsonArray v = r["validity"].toArray();
+        QJsonObject x = v[0].toObject();
+        x["numerator"] = "colour";
+        v[0] = x;
+        r["validity"] = v;
+    }));
+    TF_CHECK(!d.profile);
+    TF_CHECK(d.error.contains("colour"));
 }
 
 int main() { return tf::test::run(); }

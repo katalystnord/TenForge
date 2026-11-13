@@ -1,0 +1,21 @@
+{
+  "answers": {
+    "Ec_Pa": 3200000000.0,
+    "epsilon_B_1": 0.4,
+    "epsilon_M_1": 0.4,
+    "epsilon_y_1": 0.05,
+    "sigma_B_Pa": 150000000.0,
+    "sigma_M_Pa": 150000000.0,
+    "sigma_y_Pa": 110000000.0
+  },
+  "columns": {
+    "compression": "compression_mm:mm",
+    "force": "force_kN:kN"
+  },
+  "file": "compression.csv",
+  "fixture": "platens",
+  "length_mm": 25.4,
+  "note": "Plastic in compression, recorded negative: linear Ec = 3.2 GPa to 1 %; yield maximum 110 MPa at 5 %; softening to 98 MPa at 8 %; hardening to 150 MPa at 40 %; break.",
+  "thickness_mm": 4.05,
+  "width_mm": 10.1
+}

@@ -2,12 +2,14 @@
 #include "core/Import.h"
 #include "core/Profile.h"
 #include "core/Results.h"
+#include "core/Session.h"
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QMap>
 #include <QTextStream>
 
 // tf-analyse: TenForge's analysis without a window, for scripts and tests.
@@ -16,6 +18,9 @@
 //
 // Reads a machine's export, analyses it with a profile, prints the results
 // with their conformity, and writes results.json / results.csv on request.
+// It drives the same tf::core::Session the window does, so the two cannot
+// analyse a file differently; a missing input is refused with the
+// session's own words and the option that supplies it.
 // Exit status: 0 when the analysis ran (results that could not be
 // determined are reported, not errors), 2 for a usage or input error.
 
@@ -72,15 +77,22 @@ int main(int argc, char *argv[])
     const QCommandLineOption profileOpt("profile", "Profile id (see --list-profiles) or a profile file.", "id-or-path");
     const QCommandLineOption listOpt("list-profiles", "List the profiles shipped with TenForge.");
     const QCommandLineOption forceOpt("force", "Name of the force column (found by name if not given).", "column");
-    const QCommandLineOption extOpt("extension", "Name of the extension column (found by name if not given).", "column");
+    const QCommandLineOption extOpt("extension", "Name of the extension, deformation or deflection column (found by name if not given).", "column");
     const QCommandLineOption forceUnitOpt("force-unit", "Unit of the force column, if the file does not say (N, kN).", "unit");
     const QCommandLineOption extUnitOpt("extension-unit", "Unit of the extension column, if the file does not say (mm, %).", "unit");
     const QCommandLineOption areaOpt("area", "Original cross-section S0 with its unit, e.g. \"120.6 mm2\".", "quantity");
-    const QCommandLineOption gaugeOpt("gauge-length", "Extensometer gauge length with its unit, e.g. \"50 mm\".", "quantity");
+    const QCommandLineOption gaugeOpt("gauge-length", "Length the extension or compression is measured over, with its unit: the extensometer's gauge length, or a compression specimen's height between the platens, e.g. \"50 mm\".", "quantity");
+    const QCommandLineOption widthOpt("width", "Specimen width, e.g. \"10 mm\" (rectangular specimens, and every bend specimen).", "quantity");
+    const QCommandLineOption thicknessOpt("thickness", "Specimen thickness, e.g. \"4 mm\".", "quantity");
+    const QCommandLineOption spanOpt("span", "Bending: the support span L, e.g. \"64 mm\".", "quantity");
+    const QCommandLineOption loadingSpanOpt("loading-span", "Four-point bending: the distance between the loading points.", "quantity");
+    const QCommandLineOption deflectionAtOpt("deflection-at", "Four-point bending: where the deflection was measured, loading-points (the crosshead) or mid-span.", "where");
+    const QCommandLineOption complianceOpt("compliance", "A table of force against the machine's own displacement, taken out of the displacement (compression and bending).", "file");
     const QCommandLineOption jsonOpt("json", "Write results.json here (\"-\" for standard output).", "path");
     const QCommandLineOption csvOpt("csv", "Write results.csv here (\"-\" for standard output).", "path");
     parser.addOptions({profileOpt, listOpt, forceOpt, extOpt, forceUnitOpt, extUnitOpt, areaOpt,
-                       gaugeOpt, jsonOpt, csvOpt});
+                       gaugeOpt, widthOpt, thicknessOpt, spanOpt, loadingSpanOpt, deflectionAtOpt,
+                       complianceOpt, jsonOpt, csvOpt});
     parser.process(app);
 
     if (parser.isSet(listOpt)) {
@@ -103,35 +115,80 @@ int main(int argc, char *argv[])
         return refuse(prof.error);
     const tf::core::Profile &profile = *prof.profile;
 
-    const auto table = tf::core::readTable(files.front());
-    if (!table.table)
-        return refuse(table.error);
+    tf::core::Session session;
+    session.profile = parser.value(profileOpt);
+    if (const QString e = session.openData(files.front()); !e.isEmpty())
+        return refuse(e);
+    const tf::core::Table &table = *session.table();
 
-    tf::core::TensionMapping map;
-    map.force = parser.value(forceOpt);
-    map.extension = parser.value(extOpt);
-    map.forceUnit = parser.value(forceUnitOpt);
-    map.extensionUnit = parser.value(extUnitOpt);
+    if (parser.isSet(forceOpt))
+        session.mapping.forceColumn = parser.value(forceOpt);
+    if (parser.isSet(extOpt))
+        session.mapping.extensionColumn = parser.value(extOpt);
+    if (parser.isSet(forceUnitOpt))
+        session.mapping.forceUnit = parser.value(forceUnitOpt);
+    if (parser.isSet(extUnitOpt))
+        session.mapping.extensionUnit = parser.value(extUnitOpt);
+
+    auto length = [&](const QCommandLineOption &o, std::optional<double> &into) -> QString {
+        if (!parser.isSet(o))
+            return {};
+        into = tf::core::parseQuantity(parser.value(o), "length");
+        return into ? QString() : "--" + o.names().front() + " needs a number and a length unit, e.g. \"50 mm\"";
+    };
     if (parser.isSet(areaOpt)) {
-        map.area = tf::core::parseQuantity(parser.value(areaOpt), "area");
-        if (!map.area)
+        session.specimen.shape = tf::core::Specimen::Shape::GivenArea;
+        session.specimen.area = tf::core::parseQuantity(parser.value(areaOpt), "area");
+        if (!session.specimen.area)
             return refuse("--area needs a number and an area unit, e.g. \"120.6 mm2\"");
     }
-    if (parser.isSet(gaugeOpt)) {
-        map.gaugeLength = tf::core::parseQuantity(parser.value(gaugeOpt), "length");
-        if (!map.gaugeLength)
-            return refuse("--gauge-length needs a number and a length unit, e.g. \"50 mm\"");
+    if (parser.isSet(widthOpt) || parser.isSet(thicknessOpt)) {
+        if (parser.isSet(areaOpt))
+            return refuse("give --area, or --width and --thickness, not both");
+        session.specimen.shape = tf::core::Specimen::Shape::Rectangular;
     }
-    const auto imp = tf::core::toTension(*table.table, map);
-    if (!imp.error.isEmpty())
-        return refuse(imp.error);
+    for (const QString &e : {length(widthOpt, session.specimen.width),
+                             length(thicknessOpt, session.specimen.thickness),
+                             length(gaugeOpt, session.specimen.gaugeLength),
+                             length(spanOpt, session.fixture.span),
+                             length(loadingSpanOpt, session.fixture.loadingSpan)})
+        if (!e.isEmpty())
+            return refuse(e);
+    if (parser.isSet(deflectionAtOpt)) {
+        const QString at = parser.value(deflectionAtOpt);
+        if (at == "loading-points")
+            session.fixture.deflectionAt = tf::core::Fixture::DeflectionAt::LoadingPoints;
+        else if (at == "mid-span")
+            session.fixture.deflectionAt = tf::core::Fixture::DeflectionAt::Midspan;
+        else
+            return refuse("--deflection-at is loading-points or mid-span");
+    }
+    if (parser.isSet(complianceOpt))
+        if (const QString e = session.setCompliance(parser.value(complianceOpt)); !e.isEmpty())
+            return refuse(e);
 
-    const auto result = tf::analysis::analyseTension(imp.input, profile.method);
-    const QJsonObject doc = tf::core::resultsJson(
-        profile, result,
-        {table.table->path, QString::fromLatin1(table.table->sha256), imp.forceColumn,
-         imp.extensionColumn, imp.notes},
-        QDateTime::currentDateTimeUtc());
+    const tf::core::Step step = session.next();
+    if (!step.ready) {
+        static const QMap<QString, QString> option{
+            {"forceColumn", "--force"},
+            {"forceUnit", "--force-unit"},
+            {"extensionColumn", "--extension"},
+            {"extensionUnit", "--extension-unit"},
+            {"specimen", "--area, or --width and --thickness"},
+            {"gaugeLength", "--gauge-length"},
+            {"span", "--span"},
+            {"loadingSpan", "--loading-span"},
+            {"deflectionAt", "--deflection-at loading-points or mid-span"},
+            {"compliance", "--compliance"},
+        };
+        return refuse(QString("give %1: %2").arg(option.value(step.field, "the missing input"), step.text));
+    }
+    if (!session.analyse())
+        return refuse("the analysis did not run: " + session.next().text);
+    const QJsonObject doc = session.analysis()->doc;
+    QStringList notes;
+    for (const QJsonValue &v : doc.value("source").toObject().value("notes").toArray())
+        notes << v.toString();
 
     if (parser.isSet(jsonOpt)
         && !writeFile(parser.value(jsonOpt), QJsonDocument(doc).toJson(QJsonDocument::Indented)))
@@ -147,9 +204,9 @@ int main(int argc, char *argv[])
       << tf::core::applicationSubtitle() << "\n";
     o << "Profile:  " << profile.id << " " << profile.profileVersion << " (" << profile.title << ")"
       << (profile.shipped ? "" : ", NOT shipped with TenForge") << "\n";
-    o << "File:     " << table.table->path << "\n";
-    o << "          sha256 " << table.table->sha256 << "\n";
-    for (const QString &n : imp.notes)
+    o << "File:     " << table.path << "\n";
+    o << "          sha256 " << table.sha256 << "\n";
+    for (const QString &n : notes)
         o << "          " << n << "\n";
 
     const QJsonObject conf = doc.value("conformity").toObject();
@@ -157,16 +214,16 @@ int main(int argc, char *argv[])
       << " (results follow the profile's method but are not to the standard):\n";
     for (const QJsonValue &v : conf.value("reasons").toArray()) {
         QString d = v.toObject().value("detail").toString();
-        const int colon = d.indexOf(": results.");
+        const int colon = d.indexOf("standard's text: ");
         if (colon > 0)
-            d = d.left(colon) + " (listed in results.json)";
+            d = d.left(colon + int(QString("standard's text").size())) + " (listed in results.json)";
         o << "  - " << d << "\n";
     }
 
     o << "\nResults\n";
     for (const QJsonValue &v : doc.value("results").toArray()) {
         const QJsonObject r = v.toObject();
-        o << "  " << r.value("id").toString().leftJustified(10);
+        o << "  " << r.value("id").toString().leftJustified(12);
         if (r.value("status").toString() == "determined") {
             const QJsonObject rep = r.value("reported").toObject();
             o << (rep.value("value").toString() + " " + rep.value("unit").toString()).leftJustified(14)

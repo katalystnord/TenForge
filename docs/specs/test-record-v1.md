@@ -267,3 +267,27 @@ chooses. They are views of the record, not part of it.
    raw force channel remains the record.
 4. **Other tools' analyses are co-located** in the record under
    `analyses/` (section 7).
+
+## 10. Additions in release 0.2 (Phase 3; additive, for David's review)
+
+- **`mode`** is written as the profile's: `tension`, `compression` or
+  `flexure`.
+- **`fixture`** is written for every record, with its `kind` from the
+  profile. `three-point` and `four-point` carry `support_span`;
+  `four-point` also carries `loading_span` and `deflection_at`
+  (`loading-points` when the deflection is the crosshead's, which moves
+  the loading points; `mid-span` for a deflectometer under the beam;
+  null when the channel is already a strain). Radii are not recorded yet.
+- A bend specimen is written with shape `rectangular`; a reader also
+  accepts `beam` (section 5.2) as the same thing.
+- **Channel ids follow the mode**: `extension` (tension), `deformation`
+  (compression), `deflection` (flexure), with columns `<id>_m`; `strain`
+  with `strain_1` as before when the source column is a strain.
+- **Machine compliance.** A compliance table used in the analysis is
+  kept byte for byte as `source/compliance-<file name>` with role
+  `compliance`, and named in test.json:
+  `"compliance": {"file": "source/compliance-...", "sha256": "..."}`.
+  Opening the record applies it again.
+- For compression, `specimen.gauge_length` is the length the deformation
+  was measured over: the specimen's height between the platens, or the
+  extensometer's gauge length.
