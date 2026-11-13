@@ -48,7 +48,7 @@ jobs:
           need-vtk-qt: 'true'
           packages: >-
             ninja-build cmake g++
-            qt6-base-dev qt6-base-dev-tools libgl1-mesa-dev
+            qt6-base-dev qt6-base-dev-tools qt6-svg-dev libgl1-mesa-dev
             libeigen3-dev xvfb
 
       # NPL's TENSTAND files may not be committed (no licence stated); the

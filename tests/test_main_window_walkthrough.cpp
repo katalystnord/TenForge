@@ -26,15 +26,20 @@
 #include <QMenuBar>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QRegularExpression>
 #include <QSurfaceFormat>
+#include <QTabWidget>
 #include <QTableWidget>
+#include <QImage>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
 #include <QVTKOpenGLNativeWidget.h>
 
 #include <vtkRenderWindow.h>
+#include <vtkPlot.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <unistd.h>
@@ -312,7 +317,7 @@ private slots:
         const QString page = QString::fromUtf8(bytesOf(html));
         QVERIFY(page.contains("<td>300</td>"));
         QVERIFY(page.contains("not to the standard"));
-        QVERIFY2(page.contains("data:image/png;base64,"), "the chart is not in the report");
+        QVERIFY2(page.contains("data:image/svg+xml;base64,"), "the chart is not in the report as SVG");
     }
 
     void a_saved_record_opens_again_with_the_same_results_and_nothing_to_report()
@@ -458,6 +463,145 @@ private slots:
         QVERIFY(page.contains("the loading points"));
         QVERIFY(page.contains("<td>8.54</td>"));
         QVERIFY2(page.contains("loading-span-to-span"), "the fixture check is not in the report");
+    }
+
+    // Annotated figures: the regions the analysis found, labels at the
+    // results, the user's own notes, a modulus window moved by typing and
+    // by dragging, and the chart exported as SVG, PDF and PNG with all of
+    // it; the PDF report's chart is vector.
+    void annotate_the_curve_move_the_modulus_window_and_export_the_figure()
+    {
+        QTemporaryDir tmp;
+        tf::gui::MainWindow w;
+        w.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&w));
+        followToAnalysis(w);
+        if (QTest::currentTestFailed())
+            return;
+
+        // The regions are in the chart, each with its legend label.
+        QStringList plots;
+        for (vtkIdType i = 0; i < w.chart()->GetNumberOfPlots(); ++i)
+            plots << QString::fromStdString(w.chart()->GetPlot(i)->GetLabel());
+        for (const char *r : {"Modulus fit (E)", "Uniform elongation", "Necking"})
+            QVERIFY2(plots.contains(r), qPrintable(plots.join(", ")));
+        QTableWidget *t = resultsTable(&w);
+        QVERIFY(t);
+        const QString procedureE = cell(t, "E", 1);
+
+        // Type a window, as the hint under the chart says.
+        auto *from = labelled<QLineEdit>(&w, "From (%)");
+        auto *to = labelled<QLineEdit>(&w, "To (%)");
+        QVERIFY(from && to);
+        type(from, "0.2");
+        type(to, "2");
+        QTest::keyClick(to, Qt::Key_Return);
+        QVERIFY2(cell(t, "E", 1) != procedureE, qPrintable(cell(t, "E", 1)));
+        bool said = false;
+        for (QLabel *l : w.findChildren<QLabel *>())
+            said = said || (l->isVisible() && l->text().contains("chosen by the user"));
+        QVERIFY2(said, "the window does not say the modulus window was the user's");
+        const QString typedE = cell(t, "E", 1);
+
+        // Drag the window's end edge on the chart from 2 % to 6 %.
+        QVTKOpenGLNativeWidget *chart = w.chartWidget();
+        const double dpr = chart->devicePixelRatioF();
+        const int hPx = chart->renderWindow()->GetSize()[1];
+        auto widgetPoint = [&](double strainPct) {
+            const float sx = w.chart()->sceneX(strainPct);
+            const float sy = w.chart()->sceneY(250.0);
+            return QPoint(int(sx / dpr + 0.5), int((hPx - sy) / dpr + 0.5));
+        };
+        const QPoint grab = widgetPoint(2.0), drop = widgetPoint(6.0);
+        QTest::mousePress(chart, Qt::LeftButton, {}, grab);
+        QMouseEvent move(QEvent::MouseMove, QPointF(drop), chart->mapToGlobal(QPointF(drop)),
+                         Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(chart, &move);
+        QTest::mouseRelease(chart, Qt::LeftButton, {}, drop);
+        bool ok = false;
+        const double dragged = to->text().toDouble(&ok);
+        QVERIFY2(ok && std::fabs(dragged - 6.0) < 0.5,
+                 qPrintable("To (%) after the drag: " + to->text()));
+        QCOMPARE(from->text(), QStringLiteral("0.2"));
+        QVERIFY2(cell(t, "E", 1) != typedE, "dragging the edge did not refit the modulus");
+
+        // Back to the procedure's own window.
+        QAbstractButton *reset = button(&w, "Use the procedure's window");
+        QVERIFY(reset && reset->isEnabled());
+        QTest::mouseClick(reset, Qt::LeftButton);
+        QCOMPARE(cell(t, "E", 1), procedureE);
+
+        // Notes on the curve: one at a strain, one over a span.
+        auto *tabs = w.findChild<QTabWidget *>();
+        QVERIFY(tabs);
+        for (int i = 0; i < tabs->count(); ++i)
+            if (tabs->tabText(i) == "Notes on the curve")
+                tabs->setCurrentIndex(i);
+        QTest::mouseClick(button(&w, "Add note"), Qt::LeftButton);
+        QTableWidget *notes = nullptr;
+        for (QTableWidget *nt : w.findChildren<QTableWidget *>())
+            if (nt->isVisible() && nt->horizontalHeaderItem(0)
+                && nt->horizontalHeaderItem(0)->text() == "At strain (%)")
+                notes = nt;
+        QVERIFY(notes);
+        QCOMPARE(notes->rowCount(), 1);
+        notes->item(0, 0)->setText("0.35");
+        notes->item(0, 2)->setText("first slip");
+        QTest::mouseClick(button(&w, "Add span"), Qt::LeftButton);
+        QCOMPARE(notes->rowCount(), 2);
+        notes->item(1, 0)->setText("34");
+        notes->item(1, 1)->setText("41");
+        notes->item(1, 2)->setText("necking, by eye");
+        shot(&w, "4-annotated");
+
+        // Export the chart in all three forms.
+        QAction *exportChart = menuItem(&w, "File", "Export chart...");
+        QVERIFY(exportChart && exportChart->isEnabled());
+        const QString svg = tmp.path() + "/fig.svg";
+        answerFileDialog(svg);
+        exportChart->trigger();
+        const QString page = QString::fromUtf8(bytesOf(svg));
+        QVERIFY2(page.contains("<svg"), "no SVG written");
+        for (const char *text : {"Rp0.2 = 300 MPa", "Rm = 500 MPa", "first slip",
+                                 "necking, by eye", "Uniform elongation", "Modulus fit (E)"})
+            QVERIFY2(page.contains(QString::fromUtf8(text)), text);
+        // Readable as SVG means as browsers and Inkscape read it: no element
+        // both scaled and clipped (VTK's exporter wrote that, and the curve
+        // vanished outside Qt).
+        QVERIFY2(!QRegularExpression(R"(<g [^>]*transform="[^"]*"[^>]*clip-path=)").match(page).hasMatch()
+                     && !QRegularExpression(R"(<g [^>]*clip-path="[^"]*"[^>]*transform=)").match(page).hasMatch(),
+                 "a group is both transformed and clipped: the curve is clipped away");
+        QVERIFY2(page.contains("<polyline"), "the curve is not in the SVG");
+        // What VTK writes that other renderers misread is rewritten: markers
+        // as circles (Qt's SVG renderer skips <use> of a symbol), text
+        // anchors SVG has, and no baseline attribute Qt ignores.
+        QVERIFY2(!page.contains("#Circle\""), "markers are still <use> of a symbol");
+        QVERIFY2(!page.contains("text-anchor=\"right\""), "text-anchor right is not SVG");
+        QVERIFY2(!page.contains("alignment-baseline"), "alignment-baseline left in");
+        if (!qEnvironmentVariable("TF_WALKTHROUGH_SHOTS").isEmpty())
+            QFile::copy(svg, qEnvironmentVariable("TF_WALKTHROUGH_SHOTS") + "/figure.svg");
+
+        const QString pdf = tmp.path() + "/fig.pdf";
+        answerFileDialog(pdf);
+        exportChart->trigger();
+        QVERIFY2(bytesOf(pdf).startsWith("%PDF"), "no PDF written");
+        QVERIFY2(!bytesOf(pdf).contains("/Subtype /Image"), "the PDF chart is a picture, not vectors");
+
+        const QString png = tmp.path() + "/fig.png";
+        answerFileDialog(png);
+        exportChart->trigger();
+        const QImage img(png);
+        QVERIFY2(!img.isNull(), "no PNG written");
+        QCOMPARE(img.width(), 2400);
+
+        // The PDF report's chart is drawn from the same SVG: no raster in it.
+        const QString report = tmp.path() + "/report.pdf";
+        answerFileDialog(report);
+        menuItem(&w, "File", "Export report...")->trigger();
+        QVERIFY2(bytesOf(report).startsWith("%PDF"), "no report written");
+        QVERIFY2(!bytesOf(report).contains("/Subtype /Image"), "the report's chart is a picture");
+        if (!qEnvironmentVariable("TF_WALKTHROUGH_SHOTS").isEmpty())
+            QFile::copy(report, qEnvironmentVariable("TF_WALKTHROUGH_SHOTS") + "/report-annotated.pdf");
     }
 };
 

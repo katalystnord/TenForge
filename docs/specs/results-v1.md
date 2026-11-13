@@ -140,3 +140,6 @@ SHA-256. Specified with Phase 2, when the GUI first handles series.
 - Compression and bending are analysed with the test's own direction
   positive. When the file records them negative, a note in
   `source.notes` says so; the record keeps the file's signs.
+- **`analysis_choices`** (when the user moved the modulus window): as in
+  test-record-v1, section 10. The conformity reasons then include
+  `user-modulus-window`, naming the window.

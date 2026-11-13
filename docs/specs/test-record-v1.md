@@ -291,3 +291,13 @@ chooses. They are views of the record, not part of it.
 - For compression, `specimen.gauge_length` is the length the deformation
   was measured over: the specimen's height between the platens, or the
   extensometer's gauge length.
+- **`analysis_choices`** (optional): choices the user made in place of
+  the procedure's, applied again when the record is opened. One so far:
+  `"modulus_window": {"from": 0.002, "to": 0.004, "axis": "strain",
+  "on": "strain as plotted"}`, strains as fractions of the curve as
+  analysed (recorded strain, or after sign and compliance correction).
+- **`curve_notes`** (optional): the user's notes on the curve, each
+  `{"from": 0.0035, "to": null, "text": "..."}` (a note at one strain) or
+  with `to` (a note over a span). Strains as for `analysis_choices`. Never
+  used by the analysis. A record is still written once: notes changed on
+  an opened record are saved by saving a new record.

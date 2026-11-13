@@ -59,6 +59,10 @@ struct CurveMethod {
     double modulusFrom = 0.0005;
     double modulusTo = 0.0025;
     double maxSlopeWidth = 0.005;
+    // A strain window given on the strain as recorded (as a chart plots
+    // it) rather than counted from the zero point: a window a person
+    // chose on the chart. The zero point is still found from the line.
+    bool windowOnRecordedStrain = false;
 
     // Yield: the first local maximum after which the stress falls by at
     // least yieldMinDrop (fraction of it) and stays below it over at least

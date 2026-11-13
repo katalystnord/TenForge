@@ -47,7 +47,7 @@ jobs:
           need-vtk-qt: 'true'
           packages: >-
             ninja-build cmake g++
-            qt6-base-dev qt6-base-dev-tools libgl1-mesa-dev
+            qt6-base-dev qt6-base-dev-tools qt6-svg-dev libgl1-mesa-dev
             libeigen3-dev patchelf xvfb desktop-file-utils
             qt6-svg-plugins
 

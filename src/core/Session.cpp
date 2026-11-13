@@ -60,6 +60,8 @@ QString Session::openData(const QString &path)
     m_analysis.reset();
     mapping = {};
     specimen = {};  // a new file is a new specimen; the procedure is kept
+    modulusWindow.reset();
+    curveNotes.clear();
 
     QString why;
     mapping.forceColumn = guessForceColumn(*m_table, &why);
@@ -138,6 +140,8 @@ QString Session::openRecord(const QString &dirOrManifest)
     mapping = {o.forceColumn, o.extensionColumn, o.forceUnit, o.extensionUnit};
     specimen = o.specimen;
     fixture = o.fixture;
+    modulusWindow = o.modulusWindow;
+    curveNotes = o.curveNotes;
     setCompliance({});
     if (!o.complianceFile.isEmpty()) {
         const QString err = setCompliance(o.dir + "/" + o.complianceFile);
@@ -318,6 +322,12 @@ Step Session::next() const
                                         : QString("The gauge length must be greater than zero.")};
     }
 
+    if (modulusWindow
+        && !(std::isfinite(modulusWindow->first) && std::isfinite(modulusWindow->second)
+             && modulusWindow->first < modulusWindow->second))
+        return {false, "modulusWindow",
+                "The modulus window must start at a lower strain than it ends."};
+
     if (md != "tension" && !m_compliancePath.isEmpty()) {
         const Prepared pr = prepareCurve(*p.profile);
         if (!pr.error.isEmpty())
@@ -496,6 +506,17 @@ bool Session::analyse()
     a.profile = std::move(*p.profile);
 
     QStringList notes = m_notes;
+    if (modulusWindow) {
+        // The user's window replaces the procedure's, on the strain as
+        // plotted.
+        a.profile.method.modulusAxis = tf::analysis::TensionMethod::Axis::Strain;
+        a.profile.method.modulusFrom = modulusWindow->first;
+        a.profile.method.modulusTo = modulusWindow->second;
+        a.profile.curve.modulus = tf::analysis::CurveMethod::Modulus::StrainWindow;
+        a.profile.curve.modulusFrom = modulusWindow->first;
+        a.profile.curve.modulusTo = modulusWindow->second;
+        a.profile.curve.windowOnRecordedStrain = true;
+    }
     if (a.profile.mode == "tension") {
         a.imported = toTension(*m_table, tensionMapping());
         if (!a.imported.error.isEmpty())
@@ -540,6 +561,24 @@ bool Session::analyse()
                         {m_table->path, QString::fromLatin1(m_table->sha256),
                          a.imported.forceColumn, a.imported.extensionColumn, notes},
                         QDateTime::currentDateTimeUtc(), validity(a.profile));
+    if (modulusWindow) {
+        const auto pct = [](double v) { return QString::number(v * 100.0, 'g', 6) + " %"; };
+        QJsonObject conf = a.doc.value("conformity").toObject();
+        QJsonArray reasons = conf.value("reasons").toArray();
+        reasons.append(QJsonObject{
+            {"code", "user-modulus-window"},
+            {"detail", "The modulus was fitted between " + pct(modulusWindow->first) + " and "
+                           + pct(modulusWindow->second)
+                           + " strain (as plotted), a window chosen by the user instead of "
+                             "the procedure's."}});
+        conf["reasons"] = reasons;
+        a.doc["conformity"] = conf;
+        a.doc["analysis_choices"] = QJsonObject{
+            {"modulus_window", QJsonObject{{"from", modulusWindow->first},
+                                           {"to", modulusWindow->second},
+                                           {"axis", "strain"},
+                                           {"on", "strain as plotted"}}}};
+    }
     m_analysis = std::move(a);
     return true;
 }
@@ -549,7 +588,7 @@ QString Session::saveRecord(const QString &dir) const
     if (!m_analysis)
         return "there is no analysis to save yet: " + next().text;
     return writeRecord(dir, *m_table, m_analysis->imported, specimen, m_analysis->profile,
-                       m_analysis->doc, fixture, m_compliancePath);
+                       m_analysis->doc, fixture, m_compliancePath, modulusWindow, curveNotes);
 }
 
 } // namespace tf::core

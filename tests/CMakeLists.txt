@@ -69,6 +69,19 @@
 #     as "Extension unit", red; the loading span not read, red. The
 #     panel-width check was red on first run (389 px needed, 378 shown,
 #     and 415 in bending): a real defect, fixed.
+#   - chart_regions_labels_notes_and_modulus_window: red against stubs
+#     (10 of 10) before the code. Then the sanitizer build found a use after
+#     free in three of its own cases (a pointer into a temporary vector),
+#     fixed in the test.
+#   - main_window_walkthrough, figures: green on first run, so broken on
+#     purpose: the dragged edge not reported (red); SVG text as outlines
+#     (red); the report's chart rasterised (red: an image in the PDF);
+#     the SVG post-processing removed (red: clipped transformed group).
+#     Looking at the exported SVG found what no assertion had: VTK 9.5's
+#     exporter clips the plots away in spec-following renderers, stretches
+#     strokes and markers, names a different font, writes text anchors SVG
+#     lacks and angles of the wrong sign. Each is rewritten in
+#     ChartExport.cpp and guarded by an assertion on the SVG.
 
 # --- The engine stands alone ------------------------------------------------
 # Every public header of tf_analysis, included into one translation unit and
@@ -140,6 +153,13 @@ target_link_libraries(test_record PRIVATE tf_core)
 target_compile_definitions(test_record PRIVATE
     TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 add_test(NAME test_record_written_and_opened COMMAND test_record)
+
+# --- What the chart shows besides the curve (tf_core) -----------------------
+add_executable(test_annotations test_annotations.cpp)
+target_link_libraries(test_annotations PRIVATE tf_core)
+target_compile_definitions(test_annotations PRIVATE
+    TF_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
+add_test(NAME chart_regions_labels_notes_and_modulus_window COMMAND test_annotations)
 
 # --- The analysis session behind the window (tf_core) -----------------------
 add_executable(test_session test_session.cpp)

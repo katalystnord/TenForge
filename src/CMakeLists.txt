@@ -28,6 +28,7 @@ endforeach()
 
 # --- tf_core: record, profiles, calibration, sequencer ----------------------
 add_library(tf_core STATIC
+    core/Annotations.cpp
     core/ApplicationInfo.cpp
     core/Import.cpp
     core/Profile.cpp
@@ -62,10 +63,12 @@ qt_add_resources(tf_core "shipped_profiles"
 
 # --- tf_gui: the application window -----------------------------------------
 add_library(tf_gui STATIC
+    gui/AnnotatedChart.cpp
+    gui/ChartExport.cpp
     gui/MainWindow.cpp
 )
 target_include_directories(tf_gui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(tf_gui PUBLIC tf_core Qt6::Widgets Qt6::OpenGLWidgets
+target_link_libraries(tf_gui PUBLIC tf_core Qt6::Widgets Qt6::OpenGLWidgets Qt6::Svg
     ${VTK_LIBRARIES})
 vtk_module_autoinit(TARGETS tf_gui MODULES ${VTK_LIBRARIES})
 

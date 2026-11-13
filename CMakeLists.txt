@@ -20,7 +20,8 @@ if(TF_SANITIZE)
 endif()
 
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets OpenGLWidgets Test)
+# Svg: drawing the exported chart into PDF reports as vectors, and into PNG.
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets OpenGLWidgets Svg Test)
 
 # Ubuntu's VTK re-exports system libraries through its imported targets but
 # leaves the consumer to locate them; found up front so VTK's own config
@@ -42,6 +43,7 @@ find_package(VTK REQUIRED COMPONENTS
     ChartsCore                # vtkChartXY
     ViewsContext2D            # vtkContextView
     RenderingContextOpenGL2   # the 2D context's OpenGL backend
+    IOExport                  # vtkSVGExporter: the chart as a vector figure
 )
 
 enable_testing()

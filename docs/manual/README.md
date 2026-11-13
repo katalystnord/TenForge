@@ -9,10 +9,11 @@ yet is listed under [What 0.2 does not do](#what-02-does-not-do).
 4. [Compression tests](#compression-tests)
 5. [Machine compliance](#machine-compliance)
 6. [Reading the results](#reading-the-results)
-7. [The report](#the-report)
-8. [Test records](#test-records)
-9. [Without a window: tf-analyse](#without-a-window-tf-analyse)
-10. [What 0.2 does not do](#what-02-does-not-do)
+7. [The chart: regions, labels, notes, the modulus window](#the-chart-regions-labels-notes-the-modulus-window)
+8. [Figures and the report](#the-report)
+9. [Test records](#test-records)
+10. [Without a window: tf-analyse](#without-a-window-tf-analyse)
+11. [What 0.2 does not do](#what-02-does-not-do)
 
 ## Installing
 
@@ -190,10 +191,40 @@ was fitted to, and each strength where it was found on the curve.
 **Flags** below the table are things to look at even when everything was
 determined, such as a peak that was not treated as a yield point and why.
 
+## The chart: regions, labels, notes, the modulus window
+
+The chart shades the stretches of the curve the analysis identified, each
+named in the legend: the **modulus fit** (exactly the samples the modulus
+was fitted to), the **toe** a foam's zero point leaves out, **uniform
+elongation** and **necking** in tension (split at Rm, ending at
+fracture), and what came **after the break** in compression and bending.
+Each strength is labelled where it was found, as reported ("Rp0.2 = 300
+MPa"). Nothing is drawn that the analysis did not determine. The mouse
+wheel zooms and dragging pans.
+
+**The modulus window.** Its two edges are the dashed lines with a grip at
+the top. Drag either one, or type the window under the chart (From,
+To, in % strain as plotted), and the modulus is fitted again at once.
+The results then say that the window was yours and which it was, and the
+record keeps it. **Use the procedure's window** goes back.
+
+**Notes on the curve** (the tab beside Results): **Add note** puts a note
+at one strain, drawn on the curve with its text; **Add span** marks a
+stretch of strain with a bracket and text. Type the strains and the text
+in the table. Notes are drawn on the chart, in exported figures and in
+the report, and kept in the record; they never change a result.
+
+![A tensile curve with its regions, labels, a note and a span](images/annotated.png)
+
 ## The report
 
+**File > Export chart...** writes the chart as it is on screen, with its
+regions, labels and notes: **SVG** or **PDF** as vector figures (text
+stays text, for a drawing program or a journal), or **PNG**, 2400 pixels
+wide.
+
 **File > Export report** (Ctrl+E) writes a PDF, or an HTML page if you
-name the file `.html`. The report holds the conformity statement and its
+name the file `.html`. The chart in either is the same vector figure. The report holds the conformity statement and its
 reasons, the specimen, the chart, every result or the reason it is
 missing, any flags, and the provenance: the data file's name and SHA-256,
 the procedure's version and SHA-256, and the TenForge version and build.

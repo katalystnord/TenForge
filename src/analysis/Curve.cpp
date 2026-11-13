@@ -96,8 +96,9 @@ Outcome<Modulus> windowed(Samples e, Samples s, const CurveMethod &m, std::size_
     Outcome<Modulus> out = Outcome<Modulus>::fail("not computed");
     for (int it = 0; it < 50; ++it) {
         std::vector<double> shifted(e.begin(), e.end());
-        for (double &v : shifted)
-            v -= x0;
+        if (!m.windowOnRecordedStrain)
+            for (double &v : shifted)
+                v -= x0;
         const auto w = windowByValue(shifted, m.modulusFrom, m.modulusTo, 0, end);
         if (!w)
             return Outcome<Modulus>::fail("modulus window " + w.reason);
@@ -112,7 +113,7 @@ Outcome<Modulus> windowed(Samples e, Samples s, const CurveMethod &m, std::size_
         md.to = m.modulusTo;
         md.x0 = -f->intercept / f->slope;
         out = Outcome<Modulus>::ok(md);
-        if (m.zero == CurveMethod::Zero::AsRecorded)
+        if (m.zero == CurveMethod::Zero::AsRecorded || m.windowOnRecordedStrain)
             break;
         const bool settled = std::fabs(md.x0 - x0) <= 1e-12;
         x0 = md.x0;
@@ -226,8 +227,12 @@ AnalysisResult analyseCurve(const CurveInput &in, const CurveMethod &m)
             d.unit = unit;
             d.primitive = m.modulus == CurveMethod::Modulus::MaxSlope ? "max-slope" : "linear-fit";
             d.fit = mod->fit;
-            d.window = std::make_pair(mod->from - (m.modulus == CurveMethod::Modulus::MaxSlope ? x0 : 0.0),
-                                      mod->to - (m.modulus == CurveMethod::Modulus::MaxSlope ? x0 : 0.0));
+            // The window as strain from the zero point, as results report
+            // every strain.
+            const bool recorded =
+                m.modulus == CurveMethod::Modulus::MaxSlope || m.windowOnRecordedStrain;
+            d.window = std::make_pair(mod->from - (recorded ? x0 : 0.0),
+                                      mod->to - (recorded ? x0 : 0.0));
             d.windowAxis = "strain";
             R[q.id] = d;
             break;

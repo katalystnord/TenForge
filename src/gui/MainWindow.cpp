@@ -3,6 +3,9 @@
 #include "core/ApplicationInfo.h"
 #include "core/Record.h"
 #include "core/Report.h"
+#include "core/Annotations.h"
+#include "gui/AnnotatedChart.h"
+#include "gui/ChartExport.h"
 
 #include <QAction>
 #include <QApplication>
@@ -25,6 +28,7 @@
 #include <QScrollArea>
 #include <QSplitter>
 #include <QStatusBar>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QTextDocument>
 #include <QVBoxLayout>
@@ -38,8 +42,10 @@
 #include <vtkDoubleArray.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkNew.h>
+#include <vtkBrush.h>
 #include <vtkPen.h>
 #include <vtkPlot.h>
+#include <vtkPlotArea.h>
 #include <vtkPlotPoints.h>
 #include <vtkTable.h>
 
@@ -108,6 +114,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_saveRecord->setShortcut(QKeySequence::Save);
     m_exportReport = file->addAction(tr("&Export report..."), this, &MainWindow::exportReport);
     m_exportReport->setShortcut(QKeySequence(tr("Ctrl+E")));
+    m_exportChart = file->addAction(tr("Export &chart..."), this, &MainWindow::exportChart);
     file->addSeparator();
     file->addAction(tr("&Quit"), QKeySequence::Quit, qApp, &QApplication::quit);
     QMenu *help = menuBar()->addMenu(tr("&Help"));
@@ -354,7 +361,13 @@ QWidget *MainWindow::buildOutputs()
     m_chart->setRenderWindow(renderWindow);
     m_view = vtkSmartPointer<vtkContextView>::New();
     m_view->SetRenderWindow(renderWindow);
-    m_chartXY = vtkSmartPointer<vtkChartXY>::New();
+    m_chartXY = vtkSmartPointer<AnnotatedChart>::New();
+    // Dragging an edge of the modulus window moves it: the session refits.
+    m_chartXY->onWindowMoved = [this](double from, double to) {
+        m_session.modulusWindow = std::make_pair(from / 100.0, to / 100.0);
+        showWindowFields();
+        refresh();
+    };
     m_chartXY->GetAxis(vtkAxis::BOTTOM)->SetTitle("Strain (%)");
     m_chartXY->GetAxis(vtkAxis::LEFT)->SetTitle("Stress (MPa)");
     m_chartXY->SetShowLegend(true);
@@ -364,6 +377,37 @@ QWidget *MainWindow::buildOutputs()
     m_chartXY->GetLegend()->SetVerticalAlignment(vtkChartLegend::BOTTOM);
     m_view->GetScene()->AddItem(m_chartXY);
     v->addWidget(m_chart, 3);
+
+    // The modulus window: drag its dashed edges on the chart, or type it.
+    m_windowRow = new QWidget;
+    auto *wr = new QHBoxLayout(m_windowRow);
+    wr->setContentsMargins(0, 0, 0, 0);
+    auto *hint = new QLabel(tr("Modulus window: drag its dashed edges on the chart (the wheel zooms), "
+                            "or type it."));
+    hint->setObjectName(QStringLiteral("windowHint"));
+    wr->addWidget(hint, 1);
+    m_windowFrom = new QLineEdit;
+    m_windowFrom->setObjectName(QStringLiteral("windowFrom"));
+    m_windowTo = new QLineEdit;
+    m_windowTo->setObjectName(QStringLiteral("windowTo"));
+    for (auto [text, edit] : {std::pair{tr("From (%)"), m_windowFrom},
+                              std::pair{tr("To (%)"), m_windowTo}}) {
+        auto *l = new QLabel(text);
+        l->setBuddy(edit);
+        edit->setMaximumWidth(80);
+        wr->addWidget(l);
+        wr->addWidget(edit);
+        connect(edit, &QLineEdit::editingFinished, this, [this] { readWindowFields(); });
+    }
+    m_windowReset = new QPushButton(tr("Use the procedure's window"));
+    m_windowReset->setObjectName(QStringLiteral("windowReset"));
+    connect(m_windowReset, &QPushButton::clicked, this, [this] {
+        m_session.modulusWindow.reset();
+        showWindowFields();
+        refresh();
+    });
+    wr->addWidget(m_windowReset);
+    v->addWidget(m_windowRow);
 
     m_conformity = wrapped({}, "conformity");
     m_conformity->setStyleSheet(QStringLiteral(
@@ -377,7 +421,42 @@ QWidget *MainWindow::buildOutputs()
     m_results->verticalHeader()->setVisible(false);
     m_results->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_results->setWordWrap(true);
-    v->addWidget(m_results, 2);
+
+    // Notes on the curve: the user's own, drawn on the chart and kept in
+    // the record. A note at one strain, or over a span of strain.
+    auto *notes = new QWidget;
+    auto *nv = new QVBoxLayout(notes);
+    m_notesTable = new QTableWidget(0, 3);
+    m_notesTable->setObjectName(QStringLiteral("notes"));
+    m_notesTable->setHorizontalHeaderLabels({tr("At strain (%)"), tr("To strain (%)"), tr("Note")});
+    m_notesTable->horizontalHeader()->setStretchLastSection(true);
+    m_notesTable->verticalHeader()->setVisible(false);
+    connect(m_notesTable, &QTableWidget::cellChanged, this, [this] { readNotes(); });
+    nv->addWidget(m_notesTable, 1);
+    auto *nb = new QHBoxLayout;
+    for (auto [text, fn] : {std::pair{tr("Add note"), 0}, std::pair{tr("Add span"), 1},
+                            std::pair{tr("Remove note"), 2}}) {
+        auto *b = new QPushButton(text);
+        nb->addWidget(b);
+        connect(b, &QPushButton::clicked, this, [this, fn = fn] {
+            if (fn == 2) {
+                const int row = m_notesTable->currentRow();
+                if (row >= 0 && row < int(m_session.curveNotes.size()))
+                    m_session.curveNotes.erase(m_session.curveNotes.begin() + row);
+                showNotes();
+                showChart();
+            } else {
+                addNote(fn == 1);
+            }
+        });
+    }
+    nb->addStretch(1);
+    nv->addLayout(nb);
+
+    m_tabs = new QTabWidget;
+    m_tabs->addTab(m_results, tr("Results"));
+    m_tabs->addTab(notes, tr("Notes on the curve"));
+    v->addWidget(m_tabs, 2);
 
     m_flags = wrapped({}, "flags");
     v->addWidget(m_flags);
@@ -469,6 +548,8 @@ void MainWindow::showSession()
     m_notices->setText(m_session.notices().join("\n"));
     m_notices->setVisible(!m_session.notices().isEmpty());
     m_addUnlisted->setVisible(!m_session.unlisted().isEmpty());
+    showNotes();
+    showWindowFields();
     m_updating = false;
 }
 
@@ -579,6 +660,9 @@ void MainWindow::refresh()
 
     m_saveRecord->setEnabled(m_session.analysis().has_value());
     m_exportReport->setEnabled(m_session.analysis().has_value());
+    m_exportChart->setEnabled(m_session.analysis().has_value());
+    m_windowRow->setVisible(m_session.analysis().has_value());
+    m_tabs->setVisible(m_session.analysis().has_value());
     showResults();
     showChart();
 }
@@ -662,6 +746,44 @@ void MainWindow::showChart()
                 y->InsertNextValue(s);
             }
         }
+        // The regions the analysis found, shaded under the curve (drawn
+        // first, so the curve lies on top); each in the legend.
+        double top = 0;
+        for (vtkIdType i = 0; i < y->GetNumberOfTuples(); ++i)
+            top = std::max(top, y->GetValue(i));
+        const std::map<QString, std::array<unsigned char, 3>> shade{
+            {"toe", {150, 150, 150}},
+            {"modulus-fit", {60, 150, 60}},
+            {"uniform-elongation", {80, 130, 200}},
+            {"necking", {210, 120, 40}},
+            {"after-break", {120, 120, 120}}};
+        for (const tf::core::Region &r : tf::core::analysisRegions(*a)) {
+            vtkNew<vtkTable> t;
+            vtkNew<vtkDoubleArray> rx, lo, hi;
+            rx->SetName("x");
+            lo->SetName("lo");
+            hi->SetName(r.label.toUtf8().constData());
+            // vtkPlotArea fills nothing between only two x values (it
+            // draws an outline; seen with VTK 9.5): five points across.
+            for (int k = 0; k <= 4; ++k) {
+                rx->InsertNextValue((r.from + (r.to - r.from) * k / 4.0) * 100.0);
+                lo->InsertNextValue(0.0);
+                hi->InsertNextValue(top * 1.04);
+            }
+            t->AddColumn(rx);
+            t->AddColumn(lo);
+            t->AddColumn(hi);
+            auto *area = vtkPlotArea::SafeDownCast(m_chartXY->AddPlot(vtkChart::AREA));
+            area->SetInputData(t);
+            area->SetInputArray(0, "x");
+            area->SetInputArray(1, "lo");
+            area->SetInputArray(2, r.label.toUtf8().constData());
+            const auto c = shade.count(r.id) ? shade.at(r.id) : std::array<unsigned char, 3>{120, 120, 120};
+            area->GetBrush()->SetColor(c[0], c[1], c[2], 50);
+            area->GetPen()->SetColor(c[0], c[1], c[2], 0);
+            area->SetLabel(r.label.toStdString());
+        }
+
         curve->AddColumn(x);
         curve->AddColumn(y);
         vtkPlot *line = m_chartXY->AddPlot(vtkChart::LINE);
@@ -720,21 +842,119 @@ void MainWindow::showChart()
             p->SetLabel(pr.id.toStdString());
         }
     }
+    // Labels at the results, the user's notes, and the modulus window's
+    // edges, drawn over the plots by the chart item.
+    std::vector<AnnotatedChart::Text> labels, points;
+    std::vector<AnnotatedChart::Span> spans;
+    std::optional<std::pair<double, double>> window;
+    if (a) {
+        for (const tf::core::PointLabel &l : tf::core::resultLabels(*a))
+            labels.push_back({l.strain * 100.0, l.stress * 1e-6, l.text.toStdString()});
+        for (const tf::core::CurveNote &n : m_session.curveNotes) {
+            if (n.to) {
+                spans.push_back({n.from * 100.0, *n.to * 100.0, n.text.toStdString()});
+            } else if (const auto y = tf::core::stressAtStrain(*a, n.from)) {
+                points.push_back({n.from * 100.0, *y * 1e-6, n.text.toStdString()});
+            }
+        }
+        for (const tf::core::Region &r : tf::core::analysisRegions(*a))
+            if (r.id == "modulus-fit")
+                window = std::make_pair(r.from * 100.0, r.to * 100.0);
+        // A window the user set is shown as set, not as the samples in it.
+        if (m_session.modulusWindow)
+            window = std::make_pair(m_session.modulusWindow->first * 100.0,
+                                    m_session.modulusWindow->second * 100.0);
+    }
+    m_chartXY->setLabels(labels);
+    m_chartXY->setNotes(points, spans);
+    m_chartXY->setModulusWindow(window);
     m_chartXY->RecalculateBounds();
     if (m_chart->isVisible())
         m_chart->renderWindow()->Render();
 }
 
-QString MainWindow::chartPng() const
+QByteArray MainWindow::chartSvg(QString *error) const
 {
-    const QImage img = m_chart->grabFramebuffer();
-    if (img.isNull())
-        return {};
-    QByteArray png;
-    QBuffer buf(&png);
-    buf.open(QIODevice::WriteOnly);
-    img.save(&buf, "PNG");
-    return "data:image/png;base64," + QString::fromLatin1(png.toBase64());
+    return tf::gui::chartSvg(m_chart->renderWindow(), error);
+}
+
+// --- Notes on the curve and the modulus window ----------------------------------
+
+void MainWindow::showNotes()
+{
+    const QSignalBlocker block(m_notesTable);
+    const auto &notes = m_session.curveNotes;
+    m_notesTable->setRowCount(int(notes.size()));
+    for (int i = 0; i < int(notes.size()); ++i) {
+        m_notesTable->setItem(i, 0, new QTableWidgetItem(QString::number(notes[i].from * 100.0, 'g', 6)));
+        m_notesTable->setItem(i, 1, new QTableWidgetItem(
+                                        notes[i].to ? QString::number(*notes[i].to * 100.0, 'g', 6)
+                                                    : QString()));
+        m_notesTable->setItem(i, 2, new QTableWidgetItem(notes[i].text));
+    }
+}
+
+void MainWindow::readNotes()
+{
+    std::vector<tf::core::CurveNote> notes;
+    for (int i = 0; i < m_notesTable->rowCount(); ++i) {
+        auto text = [&](int c) { return m_notesTable->item(i, c) ? m_notesTable->item(i, c)->text().trimmed() : QString(); };
+        bool ok = false;
+        const double from = QString(text(0)).replace(',', '.').toDouble(&ok) / 100.0;
+        if (!ok)
+            continue;  // a row being typed; kept in the table, not yet drawn
+        tf::core::CurveNote n{from, std::nullopt, text(2)};
+        bool ok2 = false;
+        const double to = QString(text(1)).replace(',', '.').toDouble(&ok2) / 100.0;
+        if (ok2 && to > from)
+            n.to = to;
+        notes.push_back(n);
+    }
+    m_session.curveNotes = notes;
+    showChart();
+}
+
+void MainWindow::addNote(bool span)
+{
+    const auto &a = m_session.analysis();
+    if (!a)
+        return;
+    // Start the note in the middle of the curve; the user moves it by
+    // typing the strain.
+    double lo = 0, hi = 0;
+    for (double e : a->strain)
+        if (std::isfinite(e))
+            hi = std::max(hi, e);
+    const double mid = (lo + hi) / 2.0;
+    m_session.curveNotes.push_back(span ? tf::core::CurveNote{mid - hi / 10.0, mid + hi / 10.0, tr("span")}
+                                        : tf::core::CurveNote{mid, std::nullopt, tr("note")});
+    showNotes();
+    showChart();
+    m_tabs->setCurrentIndex(1);
+    m_notesTable->setCurrentCell(int(m_session.curveNotes.size()) - 1, 2);
+    m_notesTable->editItem(m_notesTable->currentItem());
+}
+
+void MainWindow::showWindowFields()
+{
+    const auto &w = m_session.modulusWindow;
+    m_windowFrom->setText(w ? QString::number(w->first * 100.0, 'g', 6) : QString());
+    m_windowTo->setText(w ? QString::number(w->second * 100.0, 'g', 6) : QString());
+    // Empty fields: the procedure's own window is used.
+    m_windowReset->setEnabled(w.has_value());
+}
+
+void MainWindow::readWindowFields()
+{
+    const auto from = parsed(m_windowFrom, 0.01), to = parsed(m_windowTo, 0.01);
+    if (from && to)
+        m_session.modulusWindow = std::make_pair(*from, *to);
+    else if (m_windowFrom->text().trimmed().isEmpty() && m_windowTo->text().trimmed().isEmpty())
+        m_session.modulusWindow.reset();
+    else
+        return;  // half typed
+    m_windowReset->setEnabled(m_session.modulusWindow.has_value());
+    refresh();
 }
 
 // --- Actions --------------------------------------------------------------------
@@ -808,12 +1028,13 @@ void MainWindow::exportReport()
 
     QString error;
     if (path.endsWith(".pdf", Qt::CaseInsensitive)) {
+        // The chart is drawn from its SVG, so it stays vector in the PDF.
         QTextDocument doc;
-        const QImage img = m_chart->grabFramebuffer();
-        if (!img.isNull())
-            doc.addResource(QTextDocument::ImageResource, QUrl("chart.png"), img);
+        const QByteArray svg = chartSvg();
+        if (!svg.isEmpty())
+            tf::gui::drawImageAsSvg(&doc, QStringLiteral("chart.svg"), svg);
         doc.setHtml(tf::core::reportHtml(a->doc, m_session.specimen,
-                                         img.isNull() ? QString() : QStringLiteral("chart.png"),
+                                         svg.isEmpty() ? QString() : QStringLiteral("chart.svg"),
                                          m_session.fixture));
         QPdfWriter pdf(path);
         pdf.setPageSize(QPageSize(QPageSize::A4));
@@ -829,8 +1050,14 @@ void MainWindow::exportReport()
     } else {
         QFile f(path);
         if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-            f.write(tf::core::reportHtml(a->doc, m_session.specimen, chartPng(), m_session.fixture)
+        {
+            const QByteArray svg = chartSvg();
+            const QString src = svg.isEmpty() ? QString()
+                                              : "data:image/svg+xml;base64,"
+                                                    + QString::fromLatin1(svg.toBase64());
+            f.write(tf::core::reportHtml(a->doc, m_session.specimen, src, m_session.fixture)
                         .toUtf8());
+        }
         else
             error = f.errorString();
     }
@@ -840,6 +1067,32 @@ void MainWindow::exportReport()
         return;
     }
     statusBar()->showMessage(tr("Report written to %1").arg(path));
+}
+
+void MainWindow::exportChart()
+{
+    if (!m_session.analysis())
+        return;
+    const QString base = m_session.specimen.id.isEmpty() ? QStringLiteral("chart")
+                                                         : m_session.specimen.id;
+    QString path = chooseFile(true, tr("Export the chart"),
+                              tr("SVG, vector (*.svg);;PDF, vector (*.pdf);;PNG (*.png)"),
+                              base + ".svg");
+    if (path.isEmpty())
+        return;
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    if (suffix != "svg" && suffix != "pdf" && suffix != "png")
+        path += ".svg";
+    QString error;
+    const QByteArray svg = chartSvg(&error);
+    if (error.isEmpty())
+        error = tf::gui::writeChart(svg, path);
+    if (!error.isEmpty()) {
+        m_notices->setText(tr("The chart was not exported: %1").arg(error));
+        m_notices->setVisible(true);
+        return;
+    }
+    statusBar()->showMessage(tr("Chart written to %1").arg(path));
 }
 
 void MainWindow::chooseCompliance()

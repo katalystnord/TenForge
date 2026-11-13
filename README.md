@@ -45,7 +45,7 @@ needed to use them.
 Linux, Ubuntu 26.04 or later:
 
 ```bash
-sudo apt install cmake ninja-build g++ qt6-base-dev qt6-base-dev-tools \
+sudo apt install cmake ninja-build g++ qt6-base-dev qt6-base-dev-tools qt6-svg-dev \
     libvtk9-dev libvtk9-qt-dev libgl1-mesa-dev libeigen3-dev xvfb
 cmake -S . -B build-ninja -G Ninja
 cmake --build build-ninja

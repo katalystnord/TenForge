@@ -31,13 +31,23 @@ struct Step {
     bool ready = false;
     QString field;  // which input is wanted: profile, data, forceColumn,
                     // forceUnit, extensionColumn, extensionUnit, specimen,
-                    // gaugeLength, span, loadingSpan, deflectionAt, compliance
+                    // gaugeLength, span, loadingSpan, deflectionAt, compliance,
+                    // modulusWindow
     QString text;   // the next step, as the user reads it
 };
 
 struct ColumnMapping {
     QString forceColumn, extensionColumn;
     QString forceUnit, extensionUnit;  // as the user confirmed them
+};
+
+// A note of the user's on the curve: at a strain, or over a span of strain
+// when `to` is given. Strains as plotted (Analysis::strain). Kept in the
+// test record; never used by the analysis.
+struct CurveNote {
+    double from = 0;
+    std::optional<double> to;
+    QString text;
 };
 
 struct Analysis {
@@ -65,6 +75,13 @@ public:
     Specimen specimen;
     Fixture fixture;
     QString profile;  // a shipped profile's id or a profile file's path
+
+    // A modulus window the user chose, in strain as plotted (recorded
+    // strain, or the curve's strain after sign and compliance), instead of
+    // the procedure's. The results then say they rest on it, and the record
+    // keeps it. Empty: the procedure's own window.
+    std::optional<std::pair<double, double>> modulusWindow;
+    std::vector<CurveNote> curveNotes;
 
     // A machine compliance table: a file of force against the machine's own
     // displacement, taken out of the displacement before strain is

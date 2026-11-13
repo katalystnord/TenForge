@@ -1,5 +1,7 @@
 #include "core/Record.h"
 
+#include "core/Annotations.h"
+
 #include "core/ApplicationInfo.h"
 #include "core/Results.h"
 
@@ -184,7 +186,9 @@ bool readChannel(const QString &path, const QString &column, std::vector<double>
 
 QString writeRecord(const QString &dir, const Table &source, const TensionImport &imported,
                     const Specimen &specimen, const Profile &profile, QJsonObject results,
-                    const Fixture &fixture, const QString &compliancePath)
+                    const Fixture &fixture, const QString &compliancePath,
+                    const std::optional<std::pair<double, double>> &modulusWindow,
+                    const std::vector<CurveNote> &curveNotes)
 {
     if (QDir(dir).exists() && !QDir(dir).isEmpty(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden))
         return dir + " already holds files; a record is only written into a new or empty folder";
@@ -279,6 +283,14 @@ QString writeRecord(const QString &dir, const Table &source, const TensionImport
                                                  imported.extensionColumn, imported.extensionUnit)}}},
         {"calibration", QJsonArray()},
         {"operator", ""}};
+    if (modulusWindow)
+        test["analysis_choices"] = QJsonObject{
+            {"modulus_window", QJsonObject{{"from", modulusWindow->first},
+                                           {"to", modulusWindow->second},
+                                           {"axis", "strain"},
+                                           {"on", "strain as plotted"}}}};
+    if (!curveNotes.empty())
+        test["curve_notes"] = curveNotesJson(curveNotes);
     if (!complianceRel.isEmpty())
         test["compliance"] = QJsonObject{{"file", complianceRel}, {"sha256", w.shaOf(complianceRel)}};
     w.write("test.json", jsonBytes(test), {{"role", "metadata"}});
@@ -370,6 +382,18 @@ OpenedRecord openRecord(const QString &dirIn)
     }
     r.fixture = fixtureFromJson(test.value("fixture").toObject());
     r.complianceFile = test.value("compliance").toObject().value("file").toString();
+    {
+        const QJsonObject w =
+            test.value("analysis_choices").toObject().value("modulus_window").toObject();
+        if (w.value("from").isDouble() && w.value("to").isDouble())
+            r.modulusWindow = std::make_pair(w.value("from").toDouble(), w.value("to").toDouble());
+        const auto notes = curveNotesFromJson(test.value("curve_notes").toArray(), &err);
+        if (!notes) {
+            r.error = "the record's notes on the curve: " + err;
+            return r;
+        }
+        r.curveNotes = *notes;
+    }
     const auto spec = specimenFromJson(test.value("specimen").toObject(), &err);
     if (!spec) {
         r.error = err;
