@@ -186,6 +186,12 @@ criteria met and verified by driving the real thing.
   a reference evaluation for compression (no open dataset with one found;
   the D1621 foam set has raw curves only), ISO 14125 Annex B, ISO 844's
   250 Pa fallback zero, specimen classes.
+- **Added in 0.2, 2026-11-13** (David: TenForge is first an offline
+  post-processor, so analysis, figures and reports must be good): shaded
+  regions and result labels on the chart, notes on the curve, a modulus
+  window moved by dragging or typing (kept in the record), and the chart
+  exported as SVG, PDF and PNG; the report's chart is vector. Tagged
+  v0.2.0; the draft release is David's to publish.
 
 ### Phase 4: Ecosystem exports (S to M)
 
@@ -195,6 +201,23 @@ criteria met and verified by driving the real thing.
 - Exit: opened by hand in ParaView 6.x and PyVista; card loaded in FreeCAD
   1.1.x; a FreeCAD CalculiX example run with exported `YieldPoints`;
   release 0.3.
+
+### Planned, place in the order to be decided: series and materials
+
+Asked for by David, 2026-11-13, for TenForge as an offline post-processor
+that keeps a record of tests and materials.
+
+- **Series statistics.** A series file (results-v1 section 4, still to be
+  specified and approved) naming the test records of one series; the
+  window shows per-result mean, standard deviation, ISO 2602 confidence
+  interval and Weibull parameters (all already in `tf_analysis`), the
+  curves overlaid, a table per specimen, outliers flagged rather than
+  dropped; a series report and figure.
+- **Materials record.** A library of materials (name, grade, supplier,
+  batch, condition) whose test records and series point to them, so
+  "every test of this material" is one query; open, documented files like
+  the test record, any tool can read them.
+- Exit: to be set with the specification; release number when placed.
 
 ### Phase 5: Machine layer (L)
 
